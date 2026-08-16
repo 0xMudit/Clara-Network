@@ -6,23 +6,48 @@ operator, issuer, and acquirer infrastructure.
 
 ## What's in this repository
 
-The repo currently holds the **research and specification library** for the
-network under [`docs/`](./docs/):
-
-- **25 numbered technical documents** (`docs/00-README.md` → `docs/24-...`)
-  covering the full stack: four-party model, BIN/PAN numbering, authorization /
-  clearing / settlement flows, ISO 8583 & ISO 20022, EMV chip & contactless,
-  tokenization, 3-D Secure, PCI DSS, fraud & risk, scheme APIs, system design,
-  fees/interchange, governance & PFMI, membership & certification, key
-  management & HSM, settlement & liquidity, stand-in processing, disputes &
-  chargebacks, cross-border & DCC, card production, merchant acquiring, and
-  instant payments / RTP.
-- **Reference library** (`docs/references/`) — source PDFs downloaded from
-  public institutions (BIS/CPMI, ECB, World Bank, FDIC, OCC, Visa, Mastercard,
-  PCI SSC, NIST) plus a manifest tracking every needed source, including
-  member-gated and paywalled documents.
+The repo holds the **research and specification library** for the network under
+[`docs/`](./docs/), plus the Go implementation of the switch and settlement
+engine described in [`docs/25-clara-network-system-design.md`](./docs/25-clara-network-system-design.md).
 
 Start with [`docs/00-README.md`](./docs/00-README.md).
+
+### Documentation library (all docs on `main`)
+
+| # | Document | What it covers |
+|---|----------|----------------|
+| 00 | [Documentation Index](./docs/00-README.md) | How to use the library, reading paths, coverage matrix |
+| 01 | [Card Payment Ecosystem & Four-Party Model](./docs/01-card-payment-ecosystem.md) | Participants, roles, open vs closed networks, fee flows |
+| 02 | [Card Numbering & Identification](./docs/02-card-numbering-and-identification.md) | PAN structure, IIN/BIN, MII, Luhn check digit, BIN sponsorship |
+| 03 | [Payment Flows: Authorization, Clearing, Settlement](./docs/03-payment-flows.md) | The three phases and message exchange lifecycle |
+| 04 | [ISO 8583 - Card-originated Interchange Messages](./docs/04-iso8583.md) | The message standard for card transaction switching |
+| 05 | [ISO 20022 - Payments Messaging](./docs/05-iso20022.md) | XML message standard for interbank clearing & settlement |
+| 06 | [EMV Chip & Contactless](./docs/06-emv-chip.md) | Chip card spec, cryptograms, terminal transaction flow |
+| 07 | [Tokenization & Network Tokens](./docs/07-tokenization.md) | EMV payment tokens, TSP, PAR, network token services |
+| 08 | [3-D Secure (EMV 3DS)](./docs/08-3ds.md) | E-commerce cardholder authentication protocol |
+| 09 | [PCI DSS Compliance](./docs/09-pci-dss.md) | Security standard for the cardholder data environment |
+| 10 | [Fraud Detection & Risk Management](./docs/10-fraud-risk.md) | Real-time scoring, rules, velocity, machine learning |
+| 11 | [Card Scheme Developer APIs](./docs/11-apis-integration.md) | Mastercard/Visa developer platforms and integration patterns |
+| 12 | [System Design: Building the Platform](./docs/12-system-design.md) | Microservices, idempotency, ledger, reconciliation, scaling |
+| 13 | [Fees, Interchange & Settlement Mechanics](./docs/13-fees-interchange-settlement.md) | How money and fees actually move |
+| 14 | [Glossary & Source References](./docs/14-glossary-references.md) | Terminology and research sources |
+| 15 | [Payment System Governance & Regulation](./docs/15-payment-system-governance-regulation.md) | Licensing, PFMI principles, SIPS oversight |
+| 16 | [Membership, Rulebook & Certification](./docs/16-membership-rulebook-certification.md) | Member tiers, sponsorship, rulebook, host/L3 certification |
+| 17 | [Key Management, HSM & Message Security](./docs/17-message-security-key-management.md) | PIN blocks (ISO 9564), HSMs, MACs, key hierarchy |
+| 18 | [Settlement & Liquidity Infrastructure](./docs/18-settlement-liquidity-infrastructure.md) | RTGS accounts, prefunding, net/gross settlement, default fund |
+| 19 | [Stand-In Processing & Availability](./docs/19-stand-in-processing-availability.md) | Stand-in rules, response codes 91/P, operational resilience |
+| 20 | [Disputes, Chargebacks & Arbitration](./docs/20-disputes-chargeback-management.md) | Dispute lifecycle, reason codes, VCR, monitoring programs |
+| 21 | [Cross-Border, FX & DCC](./docs/21-cross-border-fx-dcc.md) | FX conversion, dynamic currency conversion, cross-currency settlement |
+| 22 | [Card Production & Lifecycle](./docs/22-card-production-lifecycle.md) | Personalization pipeline, EMV data, lifecycle, instant issuance |
+| 23 | [Merchant Acquiring & Underwriting](./docs/23-merchant-acquiring-underwriting.md) | Boarding, MATCH/OFAC screening, MCC, reserves, monitoring |
+| 24 | [Instant Payments & Real-Time Processing](./docs/24-instant-payments-rtp.md) | RTP/TIPS/Pix/UPI, prefunding, settlement models, ISO 20022 |
+| 25 | [Clara Network System Design (Build Blueprint)](./docs/25-clara-network-system-design.md) | Decisive stack, module map, build phases 1–10, data flow |
+| 26 | [Architecture Diagram Prompts](./docs/26-architecture-image-prompts.md) | Image-generation prompts; generated diagrams in [`docs/images/`](./docs/images/) |
+
+The `docs/references/` directory holds source PDFs downloaded from public
+institutions (BIS/CPMI, ECB, World Bank, FDIC, OCC, Visa, Mastercard, PCI SSC,
+NIST) plus a manifest tracking every needed source, including member-gated and
+paywalled documents.
 
 ## Architecture
 

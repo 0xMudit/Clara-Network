@@ -37,6 +37,8 @@ articles on production payment system design.
 | 22 | [Card Production & Lifecycle](./22-card-production-lifecycle.md) | Personalization pipeline, EMV data, lifecycle, instant issuance |
 | 23 | [Merchant Acquiring & Underwriting](./23-merchant-acquiring-underwriting.md) | Boarding, MATCH/OFAC screening, MCC, reserves, monitoring |
 | 24 | [Instant Payments & Real-Time Processing](./24-instant-payments-rtp.md) | RTP/TIPS/Pix/UPI, prefunding, settlement models, ISO 20022 |
+| 25 | [Clara Network System Design (Build Blueprint)](./25-clara-network-system-design.md) | Decisive stack, module map, build phases 1–10, data flow |
+| 26 | [Architecture Diagram Prompts](./26-architecture-image-prompts.md) | Five image-generation prompts; generated diagrams in [`images/`](./images/) |
 
 ## How to use this library
 
