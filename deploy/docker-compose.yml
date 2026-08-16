@@ -132,5 +132,17 @@ services:
         condition: service_started
     restart: "no"
 
+  acquiring-sim:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["acquiring-sim"]
+    environment:
+      CLARA_PG_DSN: "postgres://clara:clara@postgres:5432/clara?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
 volumes:
   clearing-out:

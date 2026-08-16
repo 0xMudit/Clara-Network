@@ -129,3 +129,48 @@ CREATE TABLE IF NOT EXISTS tokens (
 
 CREATE INDEX IF NOT EXISTS idx_tokens_par ON tokens (par);
 CREATE INDEX IF NOT EXISTS idx_tokens_pan_hash ON tokens (pan_hash);
+
+-- Acquiring stack: merchants, funding lines, and screening lists (phase 6).
+CREATE TABLE IF NOT EXISTS merchants (
+    id                 VARCHAR(64) PRIMARY KEY,
+    name               VARCHAR(128) NOT NULL,
+    dba                VARCHAR(128) NOT NULL,
+    tax_id             VARCHAR(32),
+    principals         TEXT,
+    mccs               TEXT,
+    status             VARCHAR(16)  NOT NULL,
+    risk_tier          VARCHAR(8)   NOT NULL,
+    reserve_rate_bps   BIGINT       NOT NULL DEFAULT 0,
+    funding_delay_days INTEGER      NOT NULL DEFAULT 0,
+    transaction_limit  BIGINT       NOT NULL DEFAULT 0,
+    reserve_balance    BIGINT       NOT NULL DEFAULT 0,
+    volume             BIGINT       NOT NULL DEFAULT 0,
+    decline_reason     VARCHAR(256),
+    approved_at        TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS funding_lines (
+    id           BIGSERIAL PRIMARY KEY,
+    batch_id     VARCHAR(64) NOT NULL,
+    merchant_id  VARCHAR(64) NOT NULL,
+    gross        BIGINT      NOT NULL,
+    fees         BIGINT      NOT NULL DEFAULT 0,
+    reserve_hold BIGINT      NOT NULL DEFAULT 0,
+    net          BIGINT      NOT NULL,
+    date         TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_funding_lines_merchant
+    ON funding_lines (merchant_id, date);
+
+CREATE TABLE IF NOT EXISTS screening_lists (
+    id     BIGSERIAL PRIMARY KEY,
+    list   VARCHAR(8)  NOT NULL,
+    name   VARCHAR(128) NOT NULL,
+    tax_id VARCHAR(32),
+    detail VARCHAR(128),
+    UNIQUE (list, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_screening_lists_list ON screening_lists (list, name);
+

@@ -10,7 +10,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/switch ./cmd/swit
  && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/clearing-sim ./cmd/clearing-sim \
  && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/ledger-sim ./cmd/ledger-sim \
  && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/cardsvc ./cmd/cardsvc \
- && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/card-sim ./cmd/card-sim
+ && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/card-sim ./cmd/card-sim \
+ && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/acquiring-sim ./cmd/acquiring-sim
 
 FROM alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata
@@ -21,4 +22,5 @@ COPY --from=build /out/clearing-sim /usr/local/bin/clearing-sim
 COPY --from=build /out/ledger-sim /usr/local/bin/ledger-sim
 COPY --from=build /out/cardsvc /usr/local/bin/cardsvc
 COPY --from=build /out/card-sim /usr/local/bin/card-sim
+COPY --from=build /out/acquiring-sim /usr/local/bin/acquiring-sim
 ENTRYPOINT []

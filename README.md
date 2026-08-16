@@ -80,34 +80,38 @@ The five diagrams were generated from the prompts in
 
 ## Building & running
 
-Phases 1–5 implement the **authorization flow, net settlement, scheme ledger,
-and issuing stack**: acquirer → switch → (risk check) → issuer authorization
-with BIN-based routing, failover, idempotent replay, in-path risk scoring,
-stand-in processing; a clearing engine that captures clearing files, computes
-per-member net positions, enforces prefunded caps, applies the default fund,
-and emits ISO 20022 pacs.009 settlement instructions; an append-only
-double-entry ledger that posts every net position as a balanced journal and
-reconciles the ledger against the settlement agent's statement; and the
+Phases 1–6 implement the **authorization flow, net settlement, scheme ledger,
+issuing stack, and acquiring stack**: acquirer → switch → (risk check) →
+issuer authorization with BIN-based routing, failover, idempotent replay,
+in-path risk scoring, stand-in processing; a clearing engine that captures
+clearing files, computes per-member net positions, enforces prefunded caps,
+applies the default fund, and emits ISO 20022 pacs.009 settlement instructions;
+an append-only double-entry ledger that posts every net position as a balanced
+journal and reconciles the ledger against the settlement agent's statement; the
 issuing stack — BIN ranges, card personalization, EMV-style ARQC cryptogram
 verification (with ATC anti-replay), token vault (PAN → token + PAR), and
-mobile-wallet provisioning. It requires Go 1.26+ and Docker Desktop.
+mobile-wallet provisioning; and the acquiring stack — merchant boarding with
+MATCH/OFAC negative-list screening, MCC assignment with risk tiering, and a
+funding engine that withholds processing fees and rolling reserves and
+schedules merchant payouts. It requires Go 1.26+ and Docker Desktop.
 
 ```sh
 # unit + integration tests
 go test ./...
 
 # run the full stack using Docker (postgres, redis, switch, issuer-sim,
-# acquirer-sim, clearing-sim, ledger-sim, cardsvc, card-sim): 6 auth requests
-# with BIN routing and a velocity rule that declines the 6th with response
-# code 59, then a settlement cycle with a member default covered by the
-# default fund, a clean ledger + reconciliation run, and the issuing stack
-# demo (cryptogram verify, tokenize, provision)
+# acquirer-sim, clearing-sim, ledger-sim, cardsvc, card-sim, acquiring-sim):
+# 6 auth requests with BIN routing and a velocity rule that declines the 6th
+# with response code 59, then a settlement cycle with a member default covered
+# by the default fund, a clean ledger + reconciliation run, the issuing stack
+# demo (cryptogram verify, tokenize, provision), and the acquiring stack demo
+# (boarding decisions, fee/reserve funding, reserve release)
 docker compose -f deploy/docker-compose.yml up --build
-docker compose -f deploy/docker-compose.yml logs switch acquirer-sim clearing-sim ledger-sim card-sim
+docker compose -f deploy/docker-compose.yml logs switch acquirer-sim clearing-sim ledger-sim card-sim acquiring-sim
 
 # or run locally: terminal 1 -> switch, terminal 2 -> issuer-sim,
 # terminal 3 -> acquirer-sim, terminal 4 -> clearing-sim, terminal 5 -> ledger-sim,
-# terminal 6 -> cardsvc, terminal 7 -> card-sim
+# terminal 6 -> cardsvc, terminal 7 -> card-sim, terminal 8 -> acquiring-sim
 go run ./cmd/switch
 go run ./cmd/issuer-sim
 go run ./cmd/acquirer-sim
@@ -115,6 +119,7 @@ go run ./cmd/clearing-sim
 go run ./cmd/ledger-sim
 go run ./cmd/cardsvc
 go run ./cmd/card-sim
+go run ./cmd/acquiring-sim
 ```
 
 Key config (via env):
@@ -144,6 +149,8 @@ Key config (via env):
   API exposes `POST /cards`, `POST /cards/{ref}/arqc`,
   `POST /cards/{ref}/verify-arqc`, `POST /tokens`, `GET /tokens/{token}`,
   `POST /tokens/{token}/provision`.
+- `CLARA_PG_DSN` (acquiring-sim) — persists merchants, funding lines, and the
+  MATCH/OFAC screening lists; without it the demo uses an in-memory store.
 
 ## Status
 
@@ -151,9 +158,10 @@ Research & specification library (docs 00–26), phase 1 (ISO 8583 switch),
 phase 2 (authorization flow with BIN routing, risk, failover), phase 3
 (clearing + net settlement with prefunding, default fund, pacs.009), phase 4
 (append-only double-entry ledger + reconciliation against the settlement
-statement), and phase 5 (issuing stack: BIN ranges, card personalization,
-EMV ARQC verification, token vault, wallet provisioning) implemented.
-Contributions are welcome.
+statement), phase 5 (issuing stack: BIN ranges, card personalization, EMV ARQC
+verification, token vault, wallet provisioning), and phase 6 (acquiring stack:
+merchant boarding with MATCH/OFAC screening, MCC risk tiering, fee/reserve
+funding) implemented. Contributions are welcome.
 
 ## License
 
