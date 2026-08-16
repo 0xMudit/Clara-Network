@@ -80,35 +80,41 @@ The five diagrams were generated from the prompts in
 
 ## Building & running
 
-Phases 1–4 implement the **authorization flow, net settlement, and the
-scheme ledger**: acquirer → switch → (risk check) → issuer authorization with
-BIN-based routing, failover, idempotent replay, in-path risk scoring, stand-in
-processing; a clearing engine that captures clearing files, computes per-member
-net positions, enforces prefunded caps, applies the default fund, and emits ISO
-20022 pacs.009 settlement instructions; and an append-only double-entry ledger
-that posts every net position as a balanced journal and reconciles the ledger
-against the settlement agent's statement. It requires Go 1.26+ and Docker
-Desktop.
+Phases 1–5 implement the **authorization flow, net settlement, scheme ledger,
+and issuing stack**: acquirer → switch → (risk check) → issuer authorization
+with BIN-based routing, failover, idempotent replay, in-path risk scoring,
+stand-in processing; a clearing engine that captures clearing files, computes
+per-member net positions, enforces prefunded caps, applies the default fund,
+and emits ISO 20022 pacs.009 settlement instructions; an append-only
+double-entry ledger that posts every net position as a balanced journal and
+reconciles the ledger against the settlement agent's statement; and the
+issuing stack — BIN ranges, card personalization, EMV-style ARQC cryptogram
+verification (with ATC anti-replay), token vault (PAN → token + PAR), and
+mobile-wallet provisioning. It requires Go 1.26+ and Docker Desktop.
 
 ```sh
 # unit + integration tests
 go test ./...
 
 # run the full stack using Docker (postgres, redis, switch, issuer-sim,
-# acquirer-sim, clearing-sim, ledger-sim): 6 auth requests with BIN routing
-# and a velocity rule that declines the 6th with response code 59, then a
-# settlement cycle with a member default covered by the default fund, and a
-# clean ledger + reconciliation run
+# acquirer-sim, clearing-sim, ledger-sim, cardsvc, card-sim): 6 auth requests
+# with BIN routing and a velocity rule that declines the 6th with response
+# code 59, then a settlement cycle with a member default covered by the
+# default fund, a clean ledger + reconciliation run, and the issuing stack
+# demo (cryptogram verify, tokenize, provision)
 docker compose -f deploy/docker-compose.yml up --build
-docker compose -f deploy/docker-compose.yml logs switch acquirer-sim clearing-sim ledger-sim
+docker compose -f deploy/docker-compose.yml logs switch acquirer-sim clearing-sim ledger-sim card-sim
 
 # or run locally: terminal 1 -> switch, terminal 2 -> issuer-sim,
-# terminal 3 -> acquirer-sim, terminal 4 -> clearing-sim, terminal 5 -> ledger-sim
+# terminal 3 -> acquirer-sim, terminal 4 -> clearing-sim, terminal 5 -> ledger-sim,
+# terminal 6 -> cardsvc, terminal 7 -> card-sim
 go run ./cmd/switch
 go run ./cmd/issuer-sim
 go run ./cmd/acquirer-sim
 go run ./cmd/clearing-sim
 go run ./cmd/ledger-sim
+go run ./cmd/cardsvc
+go run ./cmd/card-sim
 ```
 
 Key config (via env):
@@ -129,14 +135,25 @@ Key config (via env):
 - `CLARA_MISMATCH` (ledger-sim) — when set, corrupts the settlement agent's
   statement to demonstrate reconciliation classification (amount mismatch and
   orphan-in-ledger).
+- `CLARA_ISSUER_MASTER_KEY` (cardsvc/card-sim) — 16-byte AES master key for
+  per-card key derivation and cryptogram verification.
+- `CLARA_BIN`, `CLARA_PAN`, `CLARA_PRODUCT` (cardsvc/card-sim) — issued BIN
+  range and the PAN to personalize; `CLARA_DEVICE_ID`, `CLARA_TRID` for
+  wallet provisioning.
+- `CLARA_LISTEN` (cardsvc) — HTTP listen address (default `:8081`); the REST
+  API exposes `POST /cards`, `POST /cards/{ref}/arqc`,
+  `POST /cards/{ref}/verify-arqc`, `POST /tokens`, `GET /tokens/{token}`,
+  `POST /tokens/{token}/provision`.
 
 ## Status
 
 Research & specification library (docs 00–26), phase 1 (ISO 8583 switch),
 phase 2 (authorization flow with BIN routing, risk, failover), phase 3
-(clearing + net settlement with prefunding, default fund, pacs.009), and
-phase 4 (append-only double-entry ledger + reconciliation against the
-settlement statement) implemented. Contributions are welcome.
+(clearing + net settlement with prefunding, default fund, pacs.009), phase 4
+(append-only double-entry ledger + reconciliation against the settlement
+statement), and phase 5 (issuing stack: BIN ranges, card personalization,
+EMV ARQC verification, token vault, wallet provisioning) implemented.
+Contributions are welcome.
 
 ## License
 

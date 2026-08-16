@@ -104,5 +104,33 @@ services:
         condition: service_healthy
     restart: "no"
 
+  cardsvc:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["cardsvc"]
+    environment:
+      CLARA_LISTEN: ":8081"
+      CLARA_PG_DSN: "postgres://clara:clara@postgres:5432/clara?sslmode=disable"
+      CLARA_ISSUER_MASTER_KEY: "2b7e151628aed2a6abf7158809cf4f3c"
+    ports:
+      - "18081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  card-sim:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["card-sim"]
+    environment:
+      CLARA_PG_DSN: "postgres://clara:clara@postgres:5432/clara?sslmode=disable"
+      CLARA_PAN: "4000001234567899"
+    depends_on:
+      cardsvc:
+        condition: service_started
+    restart: "no"
+
 volumes:
   clearing-out:

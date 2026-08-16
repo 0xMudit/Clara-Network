@@ -94,3 +94,38 @@ CREATE INDEX IF NOT EXISTS idx_ledger_entries_journal
 
 CREATE INDEX IF NOT EXISTS idx_ledger_entries_reference
     ON ledger_entries (reference);
+
+-- Issuing stack: BIN ranges, cards, and payment tokens (phase 5).
+CREATE TABLE IF NOT EXISTS bin_ranges (
+    bin      VARCHAR(6) PRIMARY KEY,
+    low      BIGINT      NOT NULL,
+    high     BIGINT      NOT NULL,
+    currency VARCHAR(3)  NOT NULL,
+    product  VARCHAR(16) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS cards (
+    ref        VARCHAR(64) PRIMARY KEY,
+    pan_hash   BYTEA       NOT NULL UNIQUE,
+    pan_masked VARCHAR(24) NOT NULL,
+    bin        VARCHAR(6)  NOT NULL,
+    expiry     VARCHAR(4)  NOT NULL,
+    status     VARCHAR(16) NOT NULL,
+    product    VARCHAR(16) NOT NULL,
+    udk        BYTEA       NOT NULL,
+    last_atc   INTEGER     NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS tokens (
+    token      VARCHAR(16) PRIMARY KEY,
+    pan_hash   BYTEA       NOT NULL,
+    par        VARCHAR(29) NOT NULL,
+    status     VARCHAR(16) NOT NULL,
+    bin        VARCHAR(6)  NOT NULL,
+    trid       VARCHAR(16) NOT NULL DEFAULT '',
+    device_id  VARCHAR(64),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tokens_par ON tokens (par);
+CREATE INDEX IF NOT EXISTS idx_tokens_pan_hash ON tokens (pan_hash);
