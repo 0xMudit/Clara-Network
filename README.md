@@ -24,6 +24,35 @@ network under [`docs/`](./docs/):
 
 Start with [`docs/00-README.md`](./docs/00-README.md).
 
+## Architecture
+
+![Clara Network end-to-end architecture](docs/images/architecture-overview.png)
+
+*End-to-end system architecture: entry points, acquirer host, Clara switch,
+issuer host, and core services.*
+
+![ISO 8583 authorization flow](docs/images/auth-flow-sequence.png)
+
+*ISO 8583 authorization flow, including the stand-in fallback path.*
+
+![Clearing, settlement & liquidity](docs/images/clearing-settlement.png)
+
+*Clearing, settlement, and liquidity: netting, prefunded accounts, default
+fund, and central-bank RTGS.*
+
+![Issuer, tokenization & card stack](docs/images/issuer-tokenization.png)
+
+*Issuer, tokenization, and card stack: card production, HSM keys, BIN ranges,
+and network tokens.*
+
+![Security, HSM & resilience](docs/images/security-hsm-resilience.png)
+
+*Security, HSM, and resilience: key hierarchy, MAC/PIN blocks, and active-active
+site topology.*
+
+The five diagrams were generated from the prompts in
+[`docs/26-architecture-image-prompts.md`](docs/26-architecture-image-prompts.md).
+
 ## Building & running
 
 Phases 1–2 implement the **ISO 8583 authorization flow** end-to-end:
