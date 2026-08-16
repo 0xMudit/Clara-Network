@@ -51,26 +51,26 @@ paywalled documents.
 
 ## Architecture
 
-![Clara Network end-to-end architecture](docs/images/architecture-overview.png)
+<img src="docs/images/architecture-overview.png" width="620" alt="Clara Network end-to-end architecture">
 
 *End-to-end system architecture: entry points, acquirer host, Clara switch,
 issuer host, and core services.*
 
-![ISO 8583 authorization flow](docs/images/auth-flow-sequence.png)
+<img src="docs/images/auth-flow-sequence.png" width="620" alt="ISO 8583 authorization flow">
 
 *ISO 8583 authorization flow, including the stand-in fallback path.*
 
-![Clearing, settlement & liquidity](docs/images/clearing-settlement.png)
+<img src="docs/images/clearing-settlement.png" width="620" alt="Clearing, settlement & liquidity">
 
 *Clearing, settlement, and liquidity: netting, prefunded accounts, default
 fund, and central-bank RTGS.*
 
-![Issuer, tokenization & card stack](docs/images/issuer-tokenization.png)
+<img src="docs/images/issuer-tokenization.png" width="620" alt="Issuer, tokenization & card stack">
 
 *Issuer, tokenization, and card stack: card production, HSM keys, BIN ranges,
 and network tokens.*
 
-![Security, HSM & resilience](docs/images/security-hsm-resilience.png)
+<img src="docs/images/security-hsm-resilience.png" width="620" alt="Security, HSM & resilience">
 
 *Security, HSM, and resilience: key hierarchy, MAC/PIN blocks, and active-active
 site topology.*
