@@ -8,6 +8,8 @@ system-design documentation.
 
 ## Prompt 1 — End-to-end system architecture
 
+![Clara Network end-to-end architecture](images/architecture-overview.png)
+
 > Create a clean professional system architecture diagram, flat vector style,
 > white background. Layered top-down layout. Layer 1 (top, "ENTRY"): three
 > boxes side by side labeled "POS TERMINAL", "E-COMMERCE", "MOBILE WALLET".
@@ -24,6 +26,8 @@ system-design documentation.
 
 ## Prompt 2 — ISO 8583 authorization flow (sequence diagram)
 
+![ISO 8583 authorization flow](images/auth-flow-sequence.png)
+
 > Create a clean sequence diagram, flat vector style, white background. Four
 > vertical lifelines left to right labeled "ACQUIRER", "SWITCH", "RISK",
 > "ISSUER". Draw these arrows in order: arrow "AUTH REQUEST (ISO 8583)" from
@@ -36,6 +40,8 @@ system-design documentation.
 > fallback, numbered steps 1-6, dark text, thin clean lines.
 
 ## Prompt 3 — Clearing, settlement & liquidity
+
+![Clearing, settlement & liquidity](images/clearing-settlement.png)
 
 > Create a clean financial infrastructure architecture diagram, flat vector
 > style, white background. Top-down: top row, three boxes labeled "ISSUER",
@@ -52,6 +58,8 @@ system-design documentation.
 
 ## Prompt 4 — Issuer, tokenization & card stack
 
+![Issuer, tokenization & card stack](images/issuer-tokenization.png)
+
 > Create a clean architectural diagram, flat vector style, white background.
 > Left side, a vertical stack of boxes labeled "CARD PRODUCTION",
 > "PERSONALIZATION", "HSM KEYS", "CARD DATA". Arrows from these into a wide
@@ -65,6 +73,8 @@ system-design documentation.
 > no gradient, thin borders.
 
 ## Prompt 5 — Security, HSM & resilience
+
+![Security, HSM & resilience](images/security-hsm-resilience.png)
 
 > Create a clean cybersecurity architecture diagram, flat vector style, white
 > background. Center, a large shield-shaped box labeled "SECURITY CORE"
