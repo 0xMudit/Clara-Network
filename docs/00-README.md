@@ -39,6 +39,16 @@ articles on production payment system design.
 | 24 | [Instant Payments & Real-Time Processing](./24-instant-payments-rtp.md) | RTP/TIPS/Pix/UPI, prefunding, settlement models, ISO 20022 |
 | 25 | [Clara Network System Design (Build Blueprint)](./25-clara-network-system-design.md) | Decisive stack, module map, build phases 1–10, data flow |
 | 26 | [Architecture Diagram Prompts](./26-architecture-image-prompts.md) | Five image-generation prompts; generated diagrams in [`images/`](./images/) |
+| 27 | [Implementation Status](./27-implementation-status.md) | What is actually built, tested, and released: phase-by-phase mapping to packages, sims, ports, config, and divergences |
+
+## Implementation status
+
+Clara Network has been **built through all ten blueprint phases** and released
+as **`v0.1.0-beta`**. The reference design in `25` is no longer aspirational:
+`27` records exactly which `internal/` package and `cmd/` simulator realizes
+each phase, the ports and `CLARA_*` configuration, the realized-vs-blueprint
+differences, and the (green) test coverage. The main `README.md` has the
+quickstart.
 
 ## How to use this library
 
@@ -71,6 +81,7 @@ Build-your-own-network checklist mapped to the docs:
 | **Card production & personalization** | 22 |
 | **Merchant acquiring, underwriting & boarding** | 23 |
 | **Instant / real-time payments** | 24 |
+| **Build blueprint & implementation status** | 25, 27 |
 
 ## Important disclaimer
 

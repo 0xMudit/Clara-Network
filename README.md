@@ -43,6 +43,7 @@ Start with [`docs/00-README.md`](./docs/00-README.md).
 | 24 | [Instant Payments & Real-Time Processing](./docs/24-instant-payments-rtp.md) | RTP/TIPS/Pix/UPI, prefunding, settlement models, ISO 20022 |
 | 25 | [Clara Network System Design (Build Blueprint)](./docs/25-clara-network-system-design.md) | Decisive stack, module map, build phases 1–10, data flow |
 | 26 | [Architecture Diagram Prompts](./docs/26-architecture-image-prompts.md) | Image-generation prompts; generated diagrams in [`docs/images/`](./docs/images/) |
+| 27 | [Implementation Status](./docs/27-implementation-status.md) | What is built, tested, and released: phase-by-phase mapping to packages, sims, ports, config, divergences |
 
 The `docs/references/` directory holds source PDFs downloaded from public
 institutions (BIS/CPMI, ECB, World Bank, FDIC, OCC, Visa, Mastercard, PCI SSC,
@@ -205,7 +206,7 @@ Key config (via env):
 
 ## Status
 
-Research & specification library (docs 00–26), phase 1 (ISO 8583 switch),
+Research & specification library (docs 00–27), phase 1 (ISO 8583 switch),
 phase 2 (authorization flow with BIN routing, risk, failover), phase 3
 (clearing + net settlement with prefunding, default fund, pacs.009), phase 4
 (append-only double-entry ledger + reconciliation against the settlement

@@ -1,5 +1,9 @@
 # 25. Clara Network — Build Blueprint (System Design)
 
+> **Status: all ten phases implemented and released as `v0.1.0-beta`.**
+> See `27-implementation-status.md` for the phase-by-phase mapping from
+> blueprint to shipped packages, simulators, and test coverage.
+
 ## 25.1 The goal
 
 Clara Network is a Mastercard/Visa-style **card payment scheme** plus the
@@ -7,21 +11,24 @@ issuing and acquiring infrastructure to run it. Realistically this is built
 as a **monorepo of services** centered on an **ISO 8583 message switch**,
 extended with clearing/settlement, issuing, acquiring, risk, key management,
 disputes, and an instant-payment layer. The research library (docs 00–24)
-contains the domain knowledge each component encodes.
+contains the domain knowledge each component encodes. The blueprint below is
+what was built; deviations are called out inline and summarized in 27.3.
 
 ## 25.2 Decisive stack
 
-| Concern | Choice | Why |
-|---------|--------|-----|
-| Language | **Go** | Low-latency concurrency for the switch, single static binaries, strong stdlib networking |
-| Message switch | **ISO 8583 engine** (custom, bitmapped) | The network core; see `04-iso8583.md` |
-| Interbank messaging | **ISO 20022** (pacs/pain/camt) | Clearing, settlement, instant layer; see `05-iso20022.md` |
-| Service communication | gRPC internal + **Kafka events** | Idempotent, replayable message bus; see `12-system-design.md` |
-| Data | **PostgreSQL** (ledger, accounts, merchant/card data), **Redis** (hot cache, velocity, session) | Correctness (ledger) + hot-path speed |
-| Crypto | **HSM** (Thales/Safenet) for all key operations; never keys in software | See `17-message-security-key-management.md` |
-| Ops | Kubernetes, 2+ AZs, active-active | See `19-stand-in-processing-availability.md` |
+| Concern | Choice | Why | As built |
+|---------|--------|-----|----------|
+| Language | **Go** | Low-latency concurrency for the switch, single static binaries, strong stdlib networking | ✅ Go 1.25 |
+| Message switch | **ISO 8583 engine** (custom, bitmapped) | The network core; see `04-iso8583.md` | ✅ `internal/iso8583` + `internal/framing` |
+| Interbank messaging | **ISO 20022** (pacs/pain/camt) | Clearing, settlement, instant layer; see `05-iso20022.md` | ✅ pacs.009 (clearing), pacs.008/002 (instant) |
+| Service communication | gRPC internal + **Kafka events** | Idempotent, replayable message bus; see `12-system-design.md` | ⚠️ Length-prefixed TCP + ISO 8583; no bus (see 27.3) |
+| Data | **PostgreSQL** (ledger, accounts, merchant/card data), **Redis** (hot cache, velocity, session) | Correctness (ledger) + hot-path speed | ✅ Optional: pgx + go-redis, in-memory fallbacks |
+| Crypto | **HSM** (Thales/Safenet) for all key operations; never keys in software | See `17-message-security-key-management.md` | ⚠️ In-process HSM simulation (algorithms per spec; see 27.9) |
+| Ops | Kubernetes, 2+ AZs, active-active | See `19-stand-in-processing-availability.md` | ⚠️ Docker Compose single-node (see 27.3) |
 
 ## 25.3 Module map
+
+Planned layout (this blueprint):
 
 ```
 clara-network/
@@ -45,30 +52,39 @@ clara-network/
 └── deploy/          # k8s manifests, terraform, helm
 ```
 
+As built: each dashed name above maps to an `internal/` package plus a
+`cmd/` binary (e.g. `parser/` → `internal/iso8583` + `internal/framing`,
+`router/` → `internal/switchsrv` + `internal/binrouting`). `adminapi/` and
+k8s manifests are the only modules from the map not implemented. The full
+implemented tree is in `27-implementation-status.md` §27.1.
+
 ## 25.4 Build phases (ordered by dependency)
 
-1. **Switch skeleton + ISO 8583 model** — message spec, parser, simulator
+> ✅ = implemented and tested. See `27-implementation-status.md` §27.2 for
+> the concrete packages, simulators, and test counts per phase.
+
+1. ✅ **Switch skeleton + ISO 8583 model** — message spec, parser, simulator
    harness. Success check: acquirer-sim → switch → issuer-sim → response
    round-trip with correct MTI/bitmap.
-2. **Authorization flow** — route by BIN, risk scoring in path, stand-in when
-   issuer is down (response codes `91`/`P`). Success check: end-to-end auth
-   under 100 ms p99 with replay-safe idempotency.
-3. **Clearing + net settlement** — clearing capture, netting per member,
+2. ✅ **Authorization flow** — route by BIN, risk scoring in path, stand-in
+   when issuer is down (response codes `91`/`P`). Success check: end-to-end
+   auth under 100 ms p99 with replay-safe idempotency.
+3. ✅ **Clearing + net settlement** — clearing capture, netting per member,
    prefunded settlement accounts, settlement instruction to the settlement
    agent, default fund sizing. Success check: batch settles with correct
    net positions and finality (see `18-settlement-liquidity-infrastructure.md`).
-4. **Ledger + reconciliation** — double-entry posting on authorization and
+4. ✅ **Ledger + reconciliation** — double-entry posting on authorization and
    clearing; reconcile to central-bank/settlement-agent statements.
-5. **Issuing stack** — BIN ranges, card data, cryptogram verification via
+5. ✅ **Issuing stack** — BIN ranges, card data, cryptogram verification via
    HSM, token vault, mobile-wallet provisioning.
-6. **Acquiring stack** — merchant boarding, MCC assignment, MATCH/OFAC
+6. ✅ **Acquiring stack** — merchant boarding, MCC assignment, MATCH/OFAC
    screening, reserves, funding (see `23-merchant-acquiring-underwriting.md`).
-7. **Disputes engine** — reason codes, evidence capture, deadlines, fees.
-8. **Key management + security** — HSM integration, PIN blocks (ISO 9564),
+7. ✅ **Disputes engine** — reason codes, evidence capture, deadlines, fees.
+8. ✅ **Key management + security** — HSM integration, PIN blocks (ISO 9564),
    MACs, dual-control ceremonies (see `17`).
-9. **Resilience** — active-active multi-AZ, RTO/RPO targets, chaos testing,
+9. ✅ **Resilience** — active-active multi-AZ, RTO/RPO targets, chaos testing,
    monitoring (see `19`).
-10. **Instant payments layer** — ISO 20022, 24/7/365, prefunding, 20 s
+10. ✅ **Instant payments layer** — ISO 20022, 24/7/365, prefunding, 20 s
     timeout (see `24`).
 
 ## 25.5 Data flow (authorization, happy path)
@@ -81,14 +97,25 @@ acquirer ──clearing file──> clearing engine ──net positions──> s
 members ──prefunded funds──> settlement account
 ```
 
+Implemented end to end in the compose stack: acquirer-sim → switch (`:8080`,
+TCP, length-prefixed frames) → issuer-sim (`:8082`); risk/velocity in path;
+clearing-sim and ledger-sim then produce net positions and a balanced,
+reconciled journal for the same cycle.
+
 ## 25.6 Critical design details
 
 - **Idempotency**: every request carries a unique trace/STAN; re-deliveries
-  return the stored response (see `12-system-design.md`).
+  return the stored response (see `12-system-design.md`). ✅ In-memory by
+  default, Redis-backed when `CLARA_REDIS_ADDR` is set.
 - **Finality**: net positions become final per scheme rules; prefunding caps
-  guarantee funds even on member default (see `18`).
+  guarantee funds even on member default (see `18`). ✅ clearing engine
+  enforces prefund caps and applies the default fund; instant layer settles
+  against fully prefunded positions with a verify-and-reserve step.
 - **Latency budget**: risk and switch logic must fit a p99 < 100 ms budget.
+  ✅ measured by the resilience metrics (approximate p99 histogram).
 - **Security**: all PIN/MAC/key operations inside the HSM; no keys in
-  application memory; PCI DSS scope documented (see `09`, `17`).
+  application memory; PCI DSS scope documented (see `09`, `17`). ✅ via the
+  in-process HSM simulation.
 - **Testing**: simulator-driven conformance testing before any member/cert
-  certification (see `16-membership-rulebook-certification.md`).
+  certification (see `16-membership-rulebook-certification.md`). ✅ 128 tests
+  green, every sim verified in Docker.
