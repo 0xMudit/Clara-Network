@@ -20,5 +20,10 @@ coverage/
 *.pem
 *.key
 
+# Go
+/bin/
+*.out
+*.test
+
 # OneDrive copies
 *OneDrive*

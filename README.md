@@ -24,9 +24,35 @@ network under [`docs/`](./docs/):
 
 Start with [`docs/00-README.md`](./docs/00-README.md).
 
+## Building & running
+
+Phase 1 implements the **ISO 8583 message switch** end-to-end: acquirer →
+switch → issuer authorization, idempotent replay, stand-in processing, and
+audit logging. It requires Go 1.26+ and Docker Desktop.
+
+```sh
+# unit + integration tests
+go test ./...
+
+# run a full round-trip using Docker (postgres, redis, switch, issuer-sim,
+# acquirer-sim), then watch the switch logs for auth responses
+docker compose -f deploy/docker-compose.yml up --build
+docker compose -f deploy/docker-compose.yml logs switch
+
+# or run locally: terminal 1 -> switch, terminal 2 -> issuer-sim,
+# terminal 3 -> acquirer-sim
+go run ./cmd/switch
+go run ./cmd/issuer-sim
+go run ./cmd/acquirer-sim
+```
+
+Key config (via env): `CLARA_ISSUER_ROUTES` (JSON `{receiving-institution-id:
+host:port}`), `CLARA_REDIS_ADDR` (idempotency), `CLARA_PG_DSN` (audit log).
+
 ## Status
 
-Research & specification phase. Contributions are welcome.
+Research & specification library (docs 00–24) plus phase 1 (ISO 8583 switch)
+implemented. Contributions are welcome.
 
 ## License
 
