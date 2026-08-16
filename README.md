@@ -80,9 +80,9 @@ The five diagrams were generated from the prompts in
 
 ## Building & running
 
-Phases 1–9 implement the **authorization flow, net settlement, scheme ledger,
-issuing stack, acquiring stack, disputes engine, key management, and
-operational resilience**: acquirer → switch →
+Phases 1–10 implement the **authorization flow, net settlement, scheme ledger,
+issuing stack, acquiring stack, disputes engine, key management,
+operational resilience, and an instant-payment layer**: acquirer → switch →
 (risk check) → issuer authorization with BIN-based routing, failover,
 idempotent replay, in-path risk scoring, stand-in processing; a clearing
 engine that captures clearing files, computes per-member net positions,
@@ -103,12 +103,17 @@ Hardware Security Module simulation with dual-control key ceremonies
 (M-of-N), AES key wrap (RFC 3394), TR-31-style key blocks for transport to
 members, ISO 9564 PIN blocks (formats 0 and 4) verified inside the HSM,
 ISO 9797-1 retail MACs with tamper detection, key rotation, a full audit
-trail, and dual-control zeroize; and the resilience layer — issuer stand-in
+trail, and dual-control zeroize; the resilience layer — issuer stand-in
 processing (SIP/STIP) with per-issuer limits and negative/valid-card files,
 per-route circuit breakers with half-open probing (primary → secondary →
 stand-in → decline), outcome metrics with approximate p99 latency, and
 burst detection of issuer-inoperative (91) responses that flags an issuer
-outage. It requires Go 1.26+ and Docker Desktop.
+outage; and the instant-payment layer — ISO 20022 pacs.008 customer credit
+transfers settled in real time, 24/7/365, against fully prefunded member
+positions (the RTP model) with a 20-second scheme SLA, verify-and-reserve
+settlement capacity checks, rejection reason codes (AC04/AC01/AG01/FF01),
+SLA timeout handling with reservation release (NOAS), and pacs.002 status
+reports. It requires Go 1.26+ and Docker Desktop.
 
 ```sh
 # unit + integration tests
@@ -116,7 +121,7 @@ go test ./...
 
 # run the full stack using Docker (postgres, redis, switch, issuer-sim,
 # acquirer-sim, clearing-sim, ledger-sim, cardsvc, card-sim, acquiring-sim,
-# disputes-sim, hsm-sim, resilience-sim): 6 auth requests with BIN routing and a velocity rule that
+# disputes-sim, hsm-sim, resilience-sim, instant-sim): 6 auth requests with BIN routing and a velocity rule that
 # declines the 6th with response code 59, then a settlement cycle with a
 # member default covered by the default fund, a clean ledger + reconciliation
 # run, the issuing stack demo (cryptogram verify, tokenize, provision), the
@@ -124,16 +129,19 @@ go test ./...
 # release), the disputes demo (representment rulings, arbitration,
 # associated-transaction rejection, chargeback ratios), the HSM demo
 # (key ceremonies, PIN verify, retail MAC + tamper detection, key rotation,
-# audit trail, zeroize), and the resilience demo (failover to a secondary
+# audit trail, zeroize), the resilience demo (failover to a secondary
 # issuer, circuit-breaker trip, stand-in approvals/declines, 91-burst alert,
-# half-open probe recovery)
+# half-open probe recovery), and the instant-payments demo (pacs.008 in ->
+# ACSC/RJCT out, prefunded positions, SLA timeout with reservation release,
+# position conservation)
 docker compose -f deploy/docker-compose.yml up --build
-docker compose -f deploy/docker-compose.yml logs switch acquirer-sim clearing-sim ledger-sim card-sim acquiring-sim disputes-sim hsm-sim resilience-sim
+docker compose -f deploy/docker-compose.yml logs switch acquirer-sim clearing-sim ledger-sim card-sim acquiring-sim disputes-sim hsm-sim resilience-sim instant-sim
 
 # or run locally: terminal 1 -> switch, terminal 2 -> issuer-sim,
 # terminal 3 -> acquirer-sim, terminal 4 -> clearing-sim, terminal 5 -> ledger-sim,
 # terminal 6 -> cardsvc, terminal 7 -> card-sim, terminal 8 -> acquiring-sim,
-# terminal 9 -> disputes-sim, terminal 10 -> hsm-sim, terminal 11 -> resilience-sim
+# terminal 9 -> disputes-sim, terminal 10 -> hsm-sim, terminal 11 -> resilience-sim,
+# terminal 12 -> instant-sim
 go run ./cmd/switch
 go run ./cmd/issuer-sim
 go run ./cmd/acquirer-sim
@@ -145,6 +153,7 @@ go run ./cmd/acquiring-sim
 go run ./cmd/disputes-sim
 go run ./cmd/hsm-sim
 go run ./cmd/resilience-sim
+go run ./cmd/instant-sim
 ```
 
 Key config (via env):
@@ -187,6 +196,12 @@ Key config (via env):
   secondary dies too (stand-in approves within limits, declines hot cards and
   restricted BINs, and issues 91s that trip a burst alert), and finally the
   primary recovers (a half-open probe re-closes the circuit).
+- `CLARA_PG_DSN` (instant-sim) — not used; the instant-payment demo runs fully
+  in-process: pacs.008 credit transfers settle in real time against
+  prefunded positions with a 20-second SLA, and rejections (AC04/AC01/AG01/
+  FF01/NOAS) never move funds. The SLA shown for the timeout drill is
+  configurable (`CLARA_INSTANT_SLA`, default `3s`) so the drill does not wait
+  twenty seconds.
 
 ## Status
 
@@ -200,11 +215,16 @@ merchant boarding with MATCH/OFAC screening, MCC risk tiering, fee/reserve
 funding), phase 7 (disputes engine: reason codes, representment,
 arbitration, associated-transaction check, chargeback monitoring), phase 8
 (key management & security: HSM simulation, dual-control key ceremonies, AES
-key wrap, PIN blocks, retail MACs, key rotation, audit, zeroize), and
-phase 9 (operational resilience: stand-in processing with per-issuer limits
-and negative/valid-card files, per-route circuit breakers with half-open
-probing, outcome metrics and p99 latency, 91-burst outage detection, and a
-chaos drill) implemented.
+key wrap, PIN blocks, retail MACs, key rotation, audit, zeroize), phase 9
+(operational resilience: stand-in processing with per-issuer limits and
+negative/valid-card files, per-route circuit breakers with half-open probing,
+outcome metrics and p99 latency, 91-burst outage detection, and a chaos
+drill), and phase 10 (instant payments: ISO 20022 pacs.008 customer credit
+transfers settled in real time, 24/7/365, against fully prefunded member
+positions with a 20-second SLA, verify-and-reserve settlement capacity
+checks, rejection reason codes, SLA timeout handling with reservation
+release, and pacs.002 status reports) implemented. All ten blueprint phases
+are complete — the network is feature-complete for a beta release.
 Contributions are welcome.
 
 ## License

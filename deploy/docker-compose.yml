@@ -170,5 +170,12 @@ services:
     command: ["resilience-sim"]
     restart: "no"
 
+  instant-sim:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["instant-sim"]
+    restart: "no"
+
 volumes:
   clearing-out:
