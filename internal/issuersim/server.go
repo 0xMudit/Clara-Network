@@ -54,6 +54,9 @@ func New(cfg Config) (*Server, error) {
 // Addr returns the bound listener address (useful with port 0 in tests).
 func (s *Server) Addr() net.Addr { return s.ln.Addr() }
 
+// Close stops the server by closing its listener.
+func (s *Server) Close() error { return s.ln.Close() }
+
 // ListenAndServe accepts connections until ctx is cancelled.
 func (s *Server) ListenAndServe(ctx context.Context) error {
 	s.log.Info("issuer-sim listening", "addr", s.ln.Addr(), "id", s.cfg.ID)

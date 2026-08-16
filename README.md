@@ -80,8 +80,9 @@ The five diagrams were generated from the prompts in
 
 ## Building & running
 
-Phases 1–8 implement the **authorization flow, net settlement, scheme ledger,
-issuing stack, acquiring stack, disputes engine, and key management**: acquirer → switch →
+Phases 1–9 implement the **authorization flow, net settlement, scheme ledger,
+issuing stack, acquiring stack, disputes engine, key management, and
+operational resilience**: acquirer → switch →
 (risk check) → issuer authorization with BIN-based routing, failover,
 idempotent replay, in-path risk scoring, stand-in processing; a clearing
 engine that captures clearing files, computes per-member net positions,
@@ -97,12 +98,17 @@ withholds processing fees and rolling reserves and schedules merchant payouts;
 the disputes engine — a reason-code taxonomy, the file → representment →
 rule → arbitration lifecycle with fees charged to the losing party, the
 associated-transaction (prior-credit) check, SLA deadline tracking, and
-merchant chargeback-ratio monitoring; and the key-management layer — a
+merchant chargeback-ratio monitoring; the key-management layer — a
 Hardware Security Module simulation with dual-control key ceremonies
 (M-of-N), AES key wrap (RFC 3394), TR-31-style key blocks for transport to
 members, ISO 9564 PIN blocks (formats 0 and 4) verified inside the HSM,
 ISO 9797-1 retail MACs with tamper detection, key rotation, a full audit
-trail, and dual-control zeroize. It requires Go 1.26+ and Docker Desktop.
+trail, and dual-control zeroize; and the resilience layer — issuer stand-in
+processing (SIP/STIP) with per-issuer limits and negative/valid-card files,
+per-route circuit breakers with half-open probing (primary → secondary →
+stand-in → decline), outcome metrics with approximate p99 latency, and
+burst detection of issuer-inoperative (91) responses that flags an issuer
+outage. It requires Go 1.26+ and Docker Desktop.
 
 ```sh
 # unit + integration tests
@@ -110,22 +116,24 @@ go test ./...
 
 # run the full stack using Docker (postgres, redis, switch, issuer-sim,
 # acquirer-sim, clearing-sim, ledger-sim, cardsvc, card-sim, acquiring-sim,
-# disputes-sim, hsm-sim): 6 auth requests with BIN routing and a velocity rule that
+# disputes-sim, hsm-sim, resilience-sim): 6 auth requests with BIN routing and a velocity rule that
 # declines the 6th with response code 59, then a settlement cycle with a
 # member default covered by the default fund, a clean ledger + reconciliation
 # run, the issuing stack demo (cryptogram verify, tokenize, provision), the
 # acquiring stack demo (boarding decisions, fee/reserve funding, reserve
 # release), the disputes demo (representment rulings, arbitration,
-# associated-transaction rejection, chargeback ratios), and the HSM demo
+# associated-transaction rejection, chargeback ratios), the HSM demo
 # (key ceremonies, PIN verify, retail MAC + tamper detection, key rotation,
-# audit trail, zeroize)
+# audit trail, zeroize), and the resilience demo (failover to a secondary
+# issuer, circuit-breaker trip, stand-in approvals/declines, 91-burst alert,
+# half-open probe recovery)
 docker compose -f deploy/docker-compose.yml up --build
-docker compose -f deploy/docker-compose.yml logs switch acquirer-sim clearing-sim ledger-sim card-sim acquiring-sim disputes-sim hsm-sim
+docker compose -f deploy/docker-compose.yml logs switch acquirer-sim clearing-sim ledger-sim card-sim acquiring-sim disputes-sim hsm-sim resilience-sim
 
 # or run locally: terminal 1 -> switch, terminal 2 -> issuer-sim,
 # terminal 3 -> acquirer-sim, terminal 4 -> clearing-sim, terminal 5 -> ledger-sim,
 # terminal 6 -> cardsvc, terminal 7 -> card-sim, terminal 8 -> acquiring-sim,
-# terminal 9 -> disputes-sim, terminal 10 -> hsm-sim
+# terminal 9 -> disputes-sim, terminal 10 -> hsm-sim, terminal 11 -> resilience-sim
 go run ./cmd/switch
 go run ./cmd/issuer-sim
 go run ./cmd/acquirer-sim
@@ -136,6 +144,7 @@ go run ./cmd/card-sim
 go run ./cmd/acquiring-sim
 go run ./cmd/disputes-sim
 go run ./cmd/hsm-sim
+go run ./cmd/resilience-sim
 ```
 
 Key config (via env):
@@ -172,6 +181,12 @@ Key config (via env):
 - `CLARA_PG_DSN` (hsm-sim) — not used; the HSM simulation is fully in-process
   (keys, ceremonies, and the audit trail live inside the HSM and are wiped on
   exit or via a dual-control `Zeroize`).
+- `CLARA_PG_DSN` (resilience-sim) — not used; the chaos drill runs fully
+  in-process: a switch fronts a primary and a secondary issuer on localhost,
+  then the primary dies (circuit breaker trips, traffic fails over), the
+  secondary dies too (stand-in approves within limits, declines hot cards and
+  restricted BINs, and issues 91s that trip a burst alert), and finally the
+  primary recovers (a half-open probe re-closes the circuit).
 
 ## Status
 
@@ -183,10 +198,13 @@ statement), phase 5 (issuing stack: BIN ranges, card personalization, EMV ARQC
 verification, token vault, wallet provisioning), phase 6 (acquiring stack:
 merchant boarding with MATCH/OFAC screening, MCC risk tiering, fee/reserve
 funding), phase 7 (disputes engine: reason codes, representment,
-arbitration, associated-transaction check, chargeback monitoring), and
-phase 8 (key management & security: HSM simulation, dual-control key
-ceremonies, AES key wrap, PIN blocks, retail MACs, key rotation, audit,
-zeroize) implemented.
+arbitration, associated-transaction check, chargeback monitoring), phase 8
+(key management & security: HSM simulation, dual-control key ceremonies, AES
+key wrap, PIN blocks, retail MACs, key rotation, audit, zeroize), and
+phase 9 (operational resilience: stand-in processing with per-issuer limits
+and negative/valid-card files, per-route circuit breakers with half-open
+probing, outcome metrics and p99 latency, 91-burst outage detection, and a
+chaos drill) implemented.
 Contributions are welcome.
 
 ## License

@@ -13,7 +13,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/switch ./cmd/swit
  && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/card-sim ./cmd/card-sim \
  && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/acquiring-sim ./cmd/acquiring-sim \
  && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/disputes-sim ./cmd/disputes-sim \
- && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/hsm-sim ./cmd/hsm-sim
+ && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/hsm-sim ./cmd/hsm-sim \
+ && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/resilience-sim ./cmd/resilience-sim
 
 FROM alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata
@@ -27,4 +28,5 @@ COPY --from=build /out/card-sim /usr/local/bin/card-sim
 COPY --from=build /out/acquiring-sim /usr/local/bin/acquiring-sim
 COPY --from=build /out/disputes-sim /usr/local/bin/disputes-sim
 COPY --from=build /out/hsm-sim /usr/local/bin/hsm-sim
+COPY --from=build /out/resilience-sim /usr/local/bin/resilience-sim
 ENTRYPOINT []

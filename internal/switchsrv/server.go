@@ -16,6 +16,7 @@ import (
 	"github.com/0xMudit/Clara-Network/internal/binrouting"
 	"github.com/0xMudit/Clara-Network/internal/framing"
 	"github.com/0xMudit/Clara-Network/internal/iso8583"
+	"github.com/0xMudit/Clara-Network/internal/resilience"
 	"github.com/0xMudit/Clara-Network/internal/risk"
 )
 
@@ -36,7 +37,10 @@ type Config struct {
 	Idempotency    IdempotencyStore
 	Audit          AuditSink
 	IdempotencyTTL time.Duration
-	StandInLimit   int64 // max amount (minor units) authorized under stand-in
+	StandInLimit   int64                   // max amount (minor units) authorized under stand-in (used when StandIn is nil)
+	StandIn        *resilience.StandIn     // issuer stand-in engine (per-issuer limits, negative files); nil uses StandInLimit
+	RouteHealth    *resilience.RouteHealth // per-route circuit breakers and failover ordering; nil disables
+	Metrics        *resilience.Metrics     // outcome metrics and 91-burst detection; nil disables
 	Log            *slog.Logger
 }
 
@@ -119,12 +123,15 @@ func (s *Server) process(ctx context.Context, frame []byte) ([]byte, error) {
 }
 
 func (s *Server) handleAuth(ctx context.Context, req *iso8583.Message) ([]byte, error) {
+	start := time.Now()
 	destID := req.Get(100)
 	if destID == "" {
 		destID = s.routeByBIN(req)
 	}
 	if destID == "" {
-		return s.marshal(s.buildResponse(req, respCodeFormatError)), nil
+		resp := s.buildResponse(req, respCodeFormatError)
+		s.recordMetric(resp, destID, start, false)
+		return s.marshal(resp), nil
 	}
 
 	key := idemKey(req)
@@ -133,6 +140,7 @@ func (s *Server) handleAuth(ctx context.Context, req *iso8583.Message) ([]byte, 
 			if resp, perr := iso8583.Parse([]byte(cached)); perr == nil {
 				s.log.Debug("idempotent replay", "stan", req.Get(11), "dest", destID)
 				s.audit(req, resp)
+				s.recordMetric(resp, destID, start, false)
 				return []byte(cached), nil
 			}
 		}
@@ -146,9 +154,11 @@ func (s *Server) handleAuth(ctx context.Context, req *iso8583.Message) ([]byte, 
 	}
 
 	respBytes, err := s.forward(ctx, req, destID)
+	usedStandIn := false
 	if err != nil {
 		s.log.Warn("issuer unavailable", "dest", destID, "err", err)
 		resp := s.standIn(req)
+		usedStandIn = true
 		if respBytes, err = resp.Marshal(); err != nil {
 			return nil, err
 		}
@@ -163,6 +173,7 @@ func (s *Server) handleAuth(ctx context.Context, req *iso8583.Message) ([]byte, 
 		return nil, err
 	}
 	s.audit(req, resp)
+	s.recordMetric(resp, destID, start, usedStandIn)
 	return respBytes, nil
 }
 
@@ -211,28 +222,58 @@ func (s *Server) checkRisk(ctx context.Context, req *iso8583.Message) ([]byte, b
 		return nil, false, err
 	}
 	s.audit(req, resp)
+	s.recordMetric(resp, req.Get(100), time.Now(), false)
 	return raw, true, nil
 }
 
+// recordMetric observes an authorization outcome for the monitoring layer.
+func (s *Server) recordMetric(resp *iso8583.Message, destID string, start time.Time, usedStandIn bool) {
+	if s.cfg.Metrics == nil {
+		return
+	}
+	s.cfg.Metrics.Record(resilience.OpResult{
+		Code:    resp.Get(39),
+		Dest:    destID,
+		StandIn: usedStandIn,
+		Latency: time.Since(start),
+	})
+}
+
 // forward relays the request to an issuer, trying each configured address in
-// order until one succeeds.
+// order until one succeeds. When a route-health table is configured, open
+// circuits are skipped (primary -> secondary -> stand-in -> decline) and each
+// outcome updates the circuit.
 func (s *Server) forward(ctx context.Context, req *iso8583.Message, destID string) ([]byte, error) {
 	addrs, ok := s.cfg.IssuerRoutes[destID]
 	if !ok {
 		return nil, fmt.Errorf("no route for receiving institution %q", destID)
 	}
-	var lastErr error
-	for _, addr := range strings.Split(addrs, ",") {
-		addr = strings.TrimSpace(addr)
-		if addr == "" {
-			continue
+	var ordered []string
+	for _, a := range strings.Split(addrs, ",") {
+		if a = strings.TrimSpace(a); a != "" {
+			ordered = append(ordered, a)
 		}
+	}
+	if s.cfg.RouteHealth != nil {
+		ordered = s.cfg.RouteHealth.Order(ordered)
+	}
+	var lastErr error
+	for _, addr := range ordered {
 		raw, err := s.dialForward(ctx, req, addr)
 		if err == nil {
+			if s.cfg.RouteHealth != nil {
+				s.cfg.RouteHealth.RecordSuccess(addr)
+			}
 			return raw, nil
 		}
 		lastErr = err
+		if s.cfg.RouteHealth != nil {
+			s.cfg.RouteHealth.RecordFailure(addr)
+		}
 		s.log.Warn("issuer attempt failed", "dest", destID, "addr", addr, "err", err)
+	}
+	if len(ordered) == 0 {
+		return nil, fmt.Errorf("all routes for %q are on cooling open circuits", destID)
 	}
 	return nil, lastErr
 }
@@ -255,16 +296,43 @@ func (s *Server) dialForward(ctx context.Context, req *iso8583.Message, addr str
 	return framing.ReadFrame(conn)
 }
 
-// standIn authorizes on behalf of an unreachable issuer: it approves within
-// the configured limit (marking the response) and declines otherwise.
+// standIn authorizes on behalf of an unreachable issuer. With a stand-in
+// engine it applies the issuer's policy (limits, negative files, valid-card
+// file); otherwise it falls back to the flat StandInLimit: approve within the
+// limit (marking the response SI) and decline with 91 otherwise.
 func (s *Server) standIn(req *iso8583.Message) *iso8583.Message {
 	resp := s.buildResponse(req, respCodeStandInDecline)
 	amount, err := strconv.ParseInt(req.Get(4), 10, 64)
-	if err == nil && amount <= s.cfg.StandInLimit {
+	if err != nil {
+		return resp
+	}
+	if s.cfg.StandIn != nil {
+		dec := s.cfg.StandIn.Decide(req.Get(100), req.Get(2), amount)
+		resp.Set(39, dec.Code)
+		if dec.Approve {
+			resp.Set(62, standInMarker)
+		}
+		return resp
+	}
+	if amount <= s.cfg.StandInLimit {
 		resp.Set(39, "00")
 		resp.Set(62, standInMarker)
 	}
 	return resp
+}
+
+// Resilience returns the current monitoring snapshot (metrics and route
+// health) for dashboards and chaos drills.
+func (s *Server) Resilience() (resilience.MetricsSnapshot, []resilience.Route) {
+	var ms resilience.MetricsSnapshot
+	if s.cfg.Metrics != nil {
+		ms = s.cfg.Metrics.Snapshot()
+	}
+	var rts []resilience.Route
+	if s.cfg.RouteHealth != nil {
+		rts = s.cfg.RouteHealth.Snapshot()
+	}
+	return ms, rts
 }
 
 func (s *Server) buildResponse(req *iso8583.Message, code string) *iso8583.Message {

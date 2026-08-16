@@ -163,5 +163,12 @@ services:
     command: ["hsm-sim"]
     restart: "no"
 
+  resilience-sim:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["resilience-sim"]
+    restart: "no"
+
 volumes:
   clearing-out:
