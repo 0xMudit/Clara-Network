@@ -12,3 +12,58 @@ CREATE TABLE IF NOT EXISTS switch_transactions (
 
 CREATE INDEX IF NOT EXISTS idx_switch_transactions_stan
     ON switch_transactions (stan, created_at);
+
+-- Clearing and net settlement (phase 3).
+CREATE TABLE IF NOT EXISTS clearing_records (
+    id            BIGSERIAL PRIMARY KEY,
+    cycle_id      VARCHAR(16)   NOT NULL,
+    stan          VARCHAR(6)    NOT NULL,
+    mti           VARCHAR(4)    NOT NULL,
+    sender        VARCHAR(20)   NOT NULL,
+    receiver      VARCHAR(20)   NOT NULL,
+    amount_minor  BIGINT        NOT NULL,
+    interchange   BIGINT        NOT NULL DEFAULT 0,
+    currency      VARCHAR(3)    NOT NULL,
+    ref_id        VARCHAR(32),
+    created_at    TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_clearing_records_cycle
+    ON clearing_records (cycle_id);
+
+CREATE TABLE IF NOT EXISTS net_positions (
+    id         BIGSERIAL PRIMARY KEY,
+    cycle_id   VARCHAR(16) NOT NULL,
+    member     VARCHAR(20) NOT NULL,
+    net_minor  BIGINT      NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_net_positions_cycle
+    ON net_positions (cycle_id);
+
+CREATE TABLE IF NOT EXISTS settlement_instructions (
+    id               BIGSERIAL PRIMARY KEY,
+    cycle_id         VARCHAR(16) NOT NULL,
+    msg_id           VARCHAR(32) NOT NULL,
+    member           VARCHAR(20) NOT NULL,
+    amount_minor     BIGINT      NOT NULL,
+    direction        VARCHAR(8)  NOT NULL,
+    currency         VARCHAR(3)  NOT NULL,
+    instruction_time TIMESTAMPTZ NOT NULL,
+    final            BOOLEAN     NOT NULL DEFAULT true
+);
+
+CREATE INDEX IF NOT EXISTS idx_settlement_instructions_cycle
+    ON settlement_instructions (cycle_id);
+
+CREATE TABLE IF NOT EXISTS prefund_accounts (
+    member   VARCHAR(20) PRIMARY KEY,
+    balance  BIGINT NOT NULL DEFAULT 0,
+    cap      BIGINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS default_fund (
+    id      SMALLINT PRIMARY KEY,
+    balance BIGINT NOT NULL DEFAULT 0
+);

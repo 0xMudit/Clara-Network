@@ -74,3 +74,22 @@ services:
       switch:
         condition: service_started
     restart: "no"
+
+  clearing-sim:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["clearing-sim"]
+    environment:
+      CLARA_PG_DSN: "postgres://clara:clara@postgres:5432/clara?sslmode=disable"
+      CLARA_SCENARIO: "default"
+      CLARA_OUT: "/out/clearing"
+    volumes:
+      - clearing-out:/out/clearing
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  clearing-out:
