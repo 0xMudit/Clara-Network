@@ -1,0 +1,24 @@
+# OS / editor noise
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Build & dependency artifacts
+node_modules/
+dist/
+build/
+coverage/
+*.log
+
+# Secrets — never commit
+.env
+.env.*
+*.pem
+*.key
+
+# OneDrive copies
+*OneDrive*
