@@ -156,5 +156,12 @@ services:
         condition: service_healthy
     restart: "no"
 
+  hsm-sim:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["hsm-sim"]
+    restart: "no"
+
 volumes:
   clearing-out:

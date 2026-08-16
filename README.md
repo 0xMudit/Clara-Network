@@ -80,8 +80,8 @@ The five diagrams were generated from the prompts in
 
 ## Building & running
 
-Phases 1–7 implement the **authorization flow, net settlement, scheme ledger,
-issuing stack, acquiring stack, and disputes engine**: acquirer → switch →
+Phases 1–8 implement the **authorization flow, net settlement, scheme ledger,
+issuing stack, acquiring stack, disputes engine, and key management**: acquirer → switch →
 (risk check) → issuer authorization with BIN-based routing, failover,
 idempotent replay, in-path risk scoring, stand-in processing; a clearing
 engine that captures clearing files, computes per-member net positions,
@@ -94,10 +94,15 @@ anti-replay), token vault (PAN → token + PAR), and mobile-wallet provisioning;
 the acquiring stack — merchant boarding with MATCH/OFAC negative-list
 screening, MCC assignment with risk tiering, and a funding engine that
 withholds processing fees and rolling reserves and schedules merchant payouts;
-and the disputes engine — a reason-code taxonomy, the file → representment →
+the disputes engine — a reason-code taxonomy, the file → representment →
 rule → arbitration lifecycle with fees charged to the losing party, the
 associated-transaction (prior-credit) check, SLA deadline tracking, and
-merchant chargeback-ratio monitoring. It requires Go 1.26+ and Docker Desktop.
+merchant chargeback-ratio monitoring; and the key-management layer — a
+Hardware Security Module simulation with dual-control key ceremonies
+(M-of-N), AES key wrap (RFC 3394), TR-31-style key blocks for transport to
+members, ISO 9564 PIN blocks (formats 0 and 4) verified inside the HSM,
+ISO 9797-1 retail MACs with tamper detection, key rotation, a full audit
+trail, and dual-control zeroize. It requires Go 1.26+ and Docker Desktop.
 
 ```sh
 # unit + integration tests
@@ -105,20 +110,22 @@ go test ./...
 
 # run the full stack using Docker (postgres, redis, switch, issuer-sim,
 # acquirer-sim, clearing-sim, ledger-sim, cardsvc, card-sim, acquiring-sim,
-# disputes-sim): 6 auth requests with BIN routing and a velocity rule that
+# disputes-sim, hsm-sim): 6 auth requests with BIN routing and a velocity rule that
 # declines the 6th with response code 59, then a settlement cycle with a
 # member default covered by the default fund, a clean ledger + reconciliation
 # run, the issuing stack demo (cryptogram verify, tokenize, provision), the
 # acquiring stack demo (boarding decisions, fee/reserve funding, reserve
-# release), and the disputes demo (representment rulings, arbitration,
-# associated-transaction rejection, chargeback ratios)
+# release), the disputes demo (representment rulings, arbitration,
+# associated-transaction rejection, chargeback ratios), and the HSM demo
+# (key ceremonies, PIN verify, retail MAC + tamper detection, key rotation,
+# audit trail, zeroize)
 docker compose -f deploy/docker-compose.yml up --build
-docker compose -f deploy/docker-compose.yml logs switch acquirer-sim clearing-sim ledger-sim card-sim acquiring-sim disputes-sim
+docker compose -f deploy/docker-compose.yml logs switch acquirer-sim clearing-sim ledger-sim card-sim acquiring-sim disputes-sim hsm-sim
 
 # or run locally: terminal 1 -> switch, terminal 2 -> issuer-sim,
 # terminal 3 -> acquirer-sim, terminal 4 -> clearing-sim, terminal 5 -> ledger-sim,
 # terminal 6 -> cardsvc, terminal 7 -> card-sim, terminal 8 -> acquiring-sim,
-# terminal 9 -> disputes-sim
+# terminal 9 -> disputes-sim, terminal 10 -> hsm-sim
 go run ./cmd/switch
 go run ./cmd/issuer-sim
 go run ./cmd/acquirer-sim
@@ -128,6 +135,7 @@ go run ./cmd/cardsvc
 go run ./cmd/card-sim
 go run ./cmd/acquiring-sim
 go run ./cmd/disputes-sim
+go run ./cmd/hsm-sim
 ```
 
 Key config (via env):
@@ -161,6 +169,9 @@ Key config (via env):
   MATCH/OFAC screening lists; without it the demo uses an in-memory store.
 - `CLARA_PG_DSN` (disputes-sim) — persists dispute cases and monitored
   transactions; without it the demo uses an in-memory store.
+- `CLARA_PG_DSN` (hsm-sim) — not used; the HSM simulation is fully in-process
+  (keys, ceremonies, and the audit trail live inside the HSM and are wiped on
+  exit or via a dual-control `Zeroize`).
 
 ## Status
 
@@ -171,8 +182,11 @@ phase 2 (authorization flow with BIN routing, risk, failover), phase 3
 statement), phase 5 (issuing stack: BIN ranges, card personalization, EMV ARQC
 verification, token vault, wallet provisioning), phase 6 (acquiring stack:
 merchant boarding with MATCH/OFAC screening, MCC risk tiering, fee/reserve
-funding), and phase 7 (disputes engine: reason codes, representment,
-arbitration, associated-transaction check, chargeback monitoring) implemented.
+funding), phase 7 (disputes engine: reason codes, representment,
+arbitration, associated-transaction check, chargeback monitoring), and
+phase 8 (key management & security: HSM simulation, dual-control key
+ceremonies, AES key wrap, PIN blocks, retail MACs, key rotation, audit,
+zeroize) implemented.
 Contributions are welcome.
 
 ## License

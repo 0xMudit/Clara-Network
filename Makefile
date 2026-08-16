@@ -1,7 +1,7 @@
 GO       ?= go
 COMPOSE  ?= docker compose
 
-.PHONY: build test vet run-switch run-issuer run-acquirer run-clearing run-ledger run-cardsvc run-card-sim run-acquiring run-disputes compose-up compose-down compose-logs clean
+.PHONY: build test vet run-switch run-issuer run-acquirer run-clearing run-ledger run-cardsvc run-card-sim run-acquiring run-disputes run-hsm compose-up compose-down compose-logs clean
 
 build:
 	$(GO) build ./...
@@ -38,6 +38,9 @@ run-acquiring:
 
 run-disputes:
 	$(GO) run ./cmd/disputes-sim
+
+run-hsm:
+	$(GO) run ./cmd/hsm-sim
 
 compose-up:
 	$(COMPOSE) -f deploy/docker-compose.yml up --build -d
