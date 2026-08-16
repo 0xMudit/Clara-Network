@@ -174,3 +174,44 @@ CREATE TABLE IF NOT EXISTS screening_lists (
 
 CREATE INDEX IF NOT EXISTS idx_screening_lists_list ON screening_lists (list, name);
 
+-- Disputes engine: cases and monitored transactions (phase 7).
+CREATE TABLE IF NOT EXISTS disputes (
+    id              VARCHAR(64) PRIMARY KEY,
+    ref_id          VARCHAR(64) NOT NULL,
+    merchant_id     VARCHAR(64) NOT NULL,
+    cardholder      VARCHAR(64) NOT NULL,
+    amount_minor    BIGINT      NOT NULL,
+    currency        VARCHAR(3)  NOT NULL,
+    reason_code     VARCHAR(8)  NOT NULL,
+    category        VARCHAR(16) NOT NULL,
+    stage           VARCHAR(16) NOT NULL,
+    status          VARCHAR(16) NOT NULL,
+    filed_at        TIMESTAMPTZ NOT NULL,
+    response_due    TIMESTAMPTZ NOT NULL,
+    responded_at    TIMESTAMPTZ,
+    escalated_at    TIMESTAMPTZ,
+    evidence        TEXT,
+    decision        VARCHAR(16),
+    winner          VARCHAR(16),
+    decision_at     TIMESTAMPTZ,
+    dispute_fee     BIGINT      NOT NULL DEFAULT 0,
+    arbitration_fee BIGINT      NOT NULL DEFAULT 0,
+    note            VARCHAR(256)
+);
+
+CREATE INDEX IF NOT EXISTS idx_disputes_merchant ON disputes (merchant_id, filed_at);
+CREATE INDEX IF NOT EXISTS idx_disputes_stage ON disputes (stage);
+
+CREATE TABLE IF NOT EXISTS dispute_transactions (
+    ref_id       VARCHAR(64) PRIMARY KEY,
+    merchant_id  VARCHAR(64) NOT NULL,
+    amount_minor BIGINT      NOT NULL,
+    currency     VARCHAR(3)  NOT NULL,
+    is_credit    BOOLEAN     NOT NULL DEFAULT false,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_dispute_transactions_merchant
+    ON dispute_transactions (merchant_id);
+
+

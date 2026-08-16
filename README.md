@@ -80,38 +80,45 @@ The five diagrams were generated from the prompts in
 
 ## Building & running
 
-Phases 1–6 implement the **authorization flow, net settlement, scheme ledger,
-issuing stack, and acquiring stack**: acquirer → switch → (risk check) →
-issuer authorization with BIN-based routing, failover, idempotent replay,
-in-path risk scoring, stand-in processing; a clearing engine that captures
-clearing files, computes per-member net positions, enforces prefunded caps,
-applies the default fund, and emits ISO 20022 pacs.009 settlement instructions;
-an append-only double-entry ledger that posts every net position as a balanced
-journal and reconciles the ledger against the settlement agent's statement; the
-issuing stack — BIN ranges, card personalization, EMV-style ARQC cryptogram
-verification (with ATC anti-replay), token vault (PAN → token + PAR), and
-mobile-wallet provisioning; and the acquiring stack — merchant boarding with
-MATCH/OFAC negative-list screening, MCC assignment with risk tiering, and a
-funding engine that withholds processing fees and rolling reserves and
-schedules merchant payouts. It requires Go 1.26+ and Docker Desktop.
+Phases 1–7 implement the **authorization flow, net settlement, scheme ledger,
+issuing stack, acquiring stack, and disputes engine**: acquirer → switch →
+(risk check) → issuer authorization with BIN-based routing, failover,
+idempotent replay, in-path risk scoring, stand-in processing; a clearing
+engine that captures clearing files, computes per-member net positions,
+enforces prefunded caps, applies the default fund, and emits ISO 20022
+pacs.009 settlement instructions; an append-only double-entry ledger that
+posts every net position as a balanced journal and reconciles the ledger
+against the settlement agent's statement; the issuing stack — BIN ranges,
+card personalization, EMV-style ARQC cryptogram verification (with ATC
+anti-replay), token vault (PAN → token + PAR), and mobile-wallet provisioning;
+the acquiring stack — merchant boarding with MATCH/OFAC negative-list
+screening, MCC assignment with risk tiering, and a funding engine that
+withholds processing fees and rolling reserves and schedules merchant payouts;
+and the disputes engine — a reason-code taxonomy, the file → representment →
+rule → arbitration lifecycle with fees charged to the losing party, the
+associated-transaction (prior-credit) check, SLA deadline tracking, and
+merchant chargeback-ratio monitoring. It requires Go 1.26+ and Docker Desktop.
 
 ```sh
 # unit + integration tests
 go test ./...
 
 # run the full stack using Docker (postgres, redis, switch, issuer-sim,
-# acquirer-sim, clearing-sim, ledger-sim, cardsvc, card-sim, acquiring-sim):
-# 6 auth requests with BIN routing and a velocity rule that declines the 6th
-# with response code 59, then a settlement cycle with a member default covered
-# by the default fund, a clean ledger + reconciliation run, the issuing stack
-# demo (cryptogram verify, tokenize, provision), and the acquiring stack demo
-# (boarding decisions, fee/reserve funding, reserve release)
+# acquirer-sim, clearing-sim, ledger-sim, cardsvc, card-sim, acquiring-sim,
+# disputes-sim): 6 auth requests with BIN routing and a velocity rule that
+# declines the 6th with response code 59, then a settlement cycle with a
+# member default covered by the default fund, a clean ledger + reconciliation
+# run, the issuing stack demo (cryptogram verify, tokenize, provision), the
+# acquiring stack demo (boarding decisions, fee/reserve funding, reserve
+# release), and the disputes demo (representment rulings, arbitration,
+# associated-transaction rejection, chargeback ratios)
 docker compose -f deploy/docker-compose.yml up --build
-docker compose -f deploy/docker-compose.yml logs switch acquirer-sim clearing-sim ledger-sim card-sim acquiring-sim
+docker compose -f deploy/docker-compose.yml logs switch acquirer-sim clearing-sim ledger-sim card-sim acquiring-sim disputes-sim
 
 # or run locally: terminal 1 -> switch, terminal 2 -> issuer-sim,
 # terminal 3 -> acquirer-sim, terminal 4 -> clearing-sim, terminal 5 -> ledger-sim,
-# terminal 6 -> cardsvc, terminal 7 -> card-sim, terminal 8 -> acquiring-sim
+# terminal 6 -> cardsvc, terminal 7 -> card-sim, terminal 8 -> acquiring-sim,
+# terminal 9 -> disputes-sim
 go run ./cmd/switch
 go run ./cmd/issuer-sim
 go run ./cmd/acquirer-sim
@@ -120,6 +127,7 @@ go run ./cmd/ledger-sim
 go run ./cmd/cardsvc
 go run ./cmd/card-sim
 go run ./cmd/acquiring-sim
+go run ./cmd/disputes-sim
 ```
 
 Key config (via env):
@@ -151,6 +159,8 @@ Key config (via env):
   `POST /tokens/{token}/provision`.
 - `CLARA_PG_DSN` (acquiring-sim) — persists merchants, funding lines, and the
   MATCH/OFAC screening lists; without it the demo uses an in-memory store.
+- `CLARA_PG_DSN` (disputes-sim) — persists dispute cases and monitored
+  transactions; without it the demo uses an in-memory store.
 
 ## Status
 
@@ -159,9 +169,11 @@ phase 2 (authorization flow with BIN routing, risk, failover), phase 3
 (clearing + net settlement with prefunding, default fund, pacs.009), phase 4
 (append-only double-entry ledger + reconciliation against the settlement
 statement), phase 5 (issuing stack: BIN ranges, card personalization, EMV ARQC
-verification, token vault, wallet provisioning), and phase 6 (acquiring stack:
+verification, token vault, wallet provisioning), phase 6 (acquiring stack:
 merchant boarding with MATCH/OFAC screening, MCC risk tiering, fee/reserve
-funding) implemented. Contributions are welcome.
+funding), and phase 7 (disputes engine: reason codes, representment,
+arbitration, associated-transaction check, chargeback monitoring) implemented.
+Contributions are welcome.
 
 ## License
 

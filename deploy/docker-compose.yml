@@ -144,5 +144,17 @@ services:
         condition: service_healthy
     restart: "no"
 
+  disputes-sim:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["disputes-sim"]
+    environment:
+      CLARA_PG_DSN: "postgres://clara:clara@postgres:5432/clara?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
 volumes:
   clearing-out:
