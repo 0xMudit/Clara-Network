@@ -26,18 +26,20 @@ Start with [`docs/00-README.md`](./docs/00-README.md).
 
 ## Building & running
 
-Phase 1 implements the **ISO 8583 message switch** end-to-end: acquirer →
-switch → issuer authorization, idempotent replay, stand-in processing, and
-audit logging. It requires Go 1.26+ and Docker Desktop.
+Phases 1–2 implement the **ISO 8583 authorization flow** end-to-end:
+acquirer → switch → (risk check) → issuer authorization, BIN-based routing,
+issuer failover, idempotent replay, in-path risk scoring (velocity), stand-in
+processing, and audit logging. It requires Go 1.26+ and Docker Desktop.
 
 ```sh
 # unit + integration tests
 go test ./...
 
 # run a full round-trip using Docker (postgres, redis, switch, issuer-sim,
-# acquirer-sim), then watch the switch logs for auth responses
+# acquirer-sim), then watch the logs: 6 auth requests with BIN routing and
+# a velocity rule that declines the 6th with response code 59
 docker compose -f deploy/docker-compose.yml up --build
-docker compose -f deploy/docker-compose.yml logs switch
+docker compose -f deploy/docker-compose.yml logs switch acquirer-sim
 
 # or run locally: terminal 1 -> switch, terminal 2 -> issuer-sim,
 # terminal 3 -> acquirer-sim
@@ -46,12 +48,22 @@ go run ./cmd/issuer-sim
 go run ./cmd/acquirer-sim
 ```
 
-Key config (via env): `CLARA_ISSUER_ROUTES` (JSON `{receiving-institution-id:
-host:port}`), `CLARA_REDIS_ADDR` (idempotency), `CLARA_PG_DSN` (audit log).
+Key config (via env):
+
+- `CLARA_ISSUER_ROUTES` — JSON `{receiving-institution-id:
+  host:port}`; a value may be a comma-separated failover list.
+- `CLARA_BIN_TABLE` — JSON `{"entries":{"400000":"1000001000"}}` routes by
+  PAN BIN when the message omits DE100.
+- `CLARA_RISK_RULES` — JSON rule set; velocity counters (per card / per
+  merchant) are counted in Redis and can decline with a configurable code.
+- `CLARA_REDIS_ADDR` — idempotency + risk counters.
+- `CLARA_PG_DSN` — audit log.
+- `CLARA_SEND_DE100=false` (acquirer-sim) — omit DE100 to exercise BIN routing.
 
 ## Status
 
-Research & specification library (docs 00–24) plus phase 1 (ISO 8583 switch)
+Research & specification library (docs 00–24), phase 1 (ISO 8583 switch),
+and phase 2 (authorization flow with BIN routing, risk, failover)
 implemented. Contributions are welcome.
 
 ## License

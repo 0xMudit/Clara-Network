@@ -10,7 +10,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/0xMudit/Clara-Network/internal/binrouting"
 	"github.com/0xMudit/Clara-Network/internal/env"
+	"github.com/0xMudit/Clara-Network/internal/risk"
 	"github.com/0xMudit/Clara-Network/internal/switchsrv"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -45,6 +47,28 @@ func main() {
 		} else {
 			cfg.Idempotency = &switchsrv.RedisIdempotency{Client: client}
 		}
+	}
+
+	if raw := os.Getenv("CLARA_BIN_TABLE"); raw != "" {
+		tab, err := binrouting.FromJSON([]byte(raw))
+		if err != nil {
+			logger.Error("invalid CLARA_BIN_TABLE", "err", err)
+			os.Exit(1)
+		}
+		cfg.BINTable = tab
+	}
+
+	if raw := os.Getenv("CLARA_RISK_RULES"); raw != "" {
+		var store risk.Store = risk.NewMemoryStore()
+		if addr := os.Getenv("CLARA_REDIS_ADDR"); addr != "" {
+			store = risk.NewRedisStore(addr)
+		}
+		engine, err := risk.FromConfig([]byte(raw), store)
+		if err != nil {
+			logger.Error("invalid CLARA_RISK_RULES", "err", err)
+			os.Exit(1)
+		}
+		cfg.Risk = engine
 	}
 
 	cfg.Audit = switchsrv.NoopAudit{}

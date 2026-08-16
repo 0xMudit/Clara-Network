@@ -28,6 +28,7 @@ func main() {
 		Count:      env.Int("CLARA_COUNT", 3),
 		Amount:     env.Int("CLARA_AMOUNT", 1000),
 		Step:       env.Int("CLARA_STEP", 2500),
+		SendDE100:  env.Get("CLARA_SEND_DE100", "true") != "false",
 		Log:        logger,
 	}
 	if err := acquirersim.Run(ctx, cfg); err != nil {

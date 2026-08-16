@@ -19,7 +19,7 @@ func testLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
-func startIssuer(t *testing.T, decision issuersim.DecisionFunc) (string, func()) {
+func startIssuer(t testing.TB, decision issuersim.DecisionFunc) (string, func()) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	srv, err := issuersim.New(issuersim.Config{ListenAddr: "127.0.0.1:0", Decision: decision, Log: testLogger()})
@@ -30,21 +30,28 @@ func startIssuer(t *testing.T, decision issuersim.DecisionFunc) (string, func())
 	return srv.Addr().String(), cancel
 }
 
-func startSwitch(t *testing.T, routes map[string]string) (string, func()) {
+func startSwitchCfg(t testing.TB, cfg Config) (string, func()) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
-	srv, err := New(Config{
-		ListenAddr:     "127.0.0.1:0",
-		IssuerRoutes:   routes,
-		Idempotency:    NewMemoryIdempotency(),
-		IdempotencyTTL: 5 * time.Second,
-		Log:            testLogger(),
-	})
+	cfg.ListenAddr = "127.0.0.1:0"
+	cfg.Log = testLogger()
+	if cfg.Idempotency == nil {
+		cfg.Idempotency = NewMemoryIdempotency()
+	}
+	if cfg.IdempotencyTTL == 0 {
+		cfg.IdempotencyTTL = 5 * time.Second
+	}
+	srv, err := New(cfg)
 	if err != nil {
 		t.Fatalf("start switch: %v", err)
 	}
 	go func() { _ = srv.ListenAndServe(ctx) }()
 	return srv.Addr().String(), cancel
+}
+
+func startSwitch(t testing.TB, routes map[string]string) (string, func()) {
+	t.Helper()
+	return startSwitchCfg(t, Config{IssuerRoutes: routes})
 }
 
 func authReq(pan string, amount int) *iso8583.Message {
@@ -64,7 +71,7 @@ func authReq(pan string, amount int) *iso8583.Message {
 		Set(100, "1000001000")
 }
 
-func send(t *testing.T, addr string, req *iso8583.Message) *iso8583.Message {
+func send(t testing.TB, addr string, req *iso8583.Message) *iso8583.Message {
 	t.Helper()
 	conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
 	if err != nil {

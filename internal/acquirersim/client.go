@@ -22,6 +22,7 @@ type Config struct {
 	Count      int
 	Amount     int // base amount in minor units
 	Step       int // amount increment per request
+	SendDE100  bool
 	Log        *slog.Logger
 }
 
@@ -57,7 +58,10 @@ func Run(ctx context.Context, cfg Config) error {
 			Set(25, "00").
 			Set(32, cfg.AcquirerID).
 			Set(49, "840").
-			Set(100, cfg.IssuerID)
+			Set(41, "TST00001")
+		if cfg.SendDE100 {
+			req.Set(100, cfg.IssuerID)
+		}
 
 		raw, err := req.Marshal()
 		if err != nil {

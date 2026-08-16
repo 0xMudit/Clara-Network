@@ -10,23 +10,29 @@ import (
 	"log/slog"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/0xMudit/Clara-Network/internal/binrouting"
 	"github.com/0xMudit/Clara-Network/internal/framing"
 	"github.com/0xMudit/Clara-Network/internal/iso8583"
+	"github.com/0xMudit/Clara-Network/internal/risk"
 )
 
 const (
 	respCodeFormatError    = "30" // Format error
 	respCodeStandInDecline = "91" // Issuer or switch inoperative
 	respCodeSystemError    = "96" // System malfunction
+	respCodeRiskFraud      = "59" // Suspected fraud
 	standInMarker          = "SI"
 )
 
 // Config configures the switch.
 type Config struct {
 	ListenAddr     string
-	IssuerRoutes   map[string]string // receiving institution ID (DE100) -> issuer host:port
+	IssuerRoutes   map[string]string // receiving institution ID (DE100) -> comma-separated issuer host:port list
+	BINTable       *binrouting.Table // derives DE100 from the PAN when absent
+	Risk           *risk.Engine      // in-path risk evaluation; nil disables
 	Idempotency    IdempotencyStore
 	Audit          AuditSink
 	IdempotencyTTL time.Duration
@@ -115,6 +121,9 @@ func (s *Server) process(ctx context.Context, frame []byte) ([]byte, error) {
 func (s *Server) handleAuth(ctx context.Context, req *iso8583.Message) ([]byte, error) {
 	destID := req.Get(100)
 	if destID == "" {
+		destID = s.routeByBIN(req)
+	}
+	if destID == "" {
 		return s.marshal(s.buildResponse(req, respCodeFormatError)), nil
 	}
 
@@ -127,6 +136,13 @@ func (s *Server) handleAuth(ctx context.Context, req *iso8583.Message) ([]byte, 
 				return []byte(cached), nil
 			}
 		}
+	}
+
+	if respBytes, declined, err := s.checkRisk(ctx, req); declined || err != nil {
+		if declined {
+			return respBytes, nil
+		}
+		return nil, err
 	}
 
 	respBytes, err := s.forward(ctx, req, destID)
@@ -150,11 +166,78 @@ func (s *Server) handleAuth(ctx context.Context, req *iso8583.Message) ([]byte, 
 	return respBytes, nil
 }
 
+// routeByBIN derives the destination institution from the PAN using the BIN
+// table and records it as DE100 on the request so downstream parties agree.
+func (s *Server) routeByBIN(req *iso8583.Message) string {
+	if s.cfg.BINTable == nil {
+		return ""
+	}
+	id, ok := s.cfg.BINTable.Lookup(req.Get(2))
+	if !ok {
+		s.log.Warn("no BIN route", "bin", binOf(req.Get(2)))
+		return ""
+	}
+	req.Set(100, id)
+	return id
+}
+
+// checkRisk evaluates the request against the risk engine. When declined it
+// returns a marshalled response and declined=true; the caller short-circuits.
+func (s *Server) checkRisk(ctx context.Context, req *iso8583.Message) ([]byte, bool, error) {
+	if s.cfg.Risk == nil {
+		return nil, false, nil
+	}
+	amount, err := strconv.ParseInt(req.Get(4), 10, 64)
+	if err != nil {
+		return s.marshal(s.buildResponse(req, respCodeFormatError)), true, nil
+	}
+	dec, err := s.cfg.Risk.Evaluate(ctx, req.Get(2), req.Get(41), amount)
+	if err != nil {
+		s.log.Warn("risk evaluation failed", "err", err)
+		return nil, false, nil
+	}
+	if dec.Allow {
+		return nil, false, nil
+	}
+	code := dec.Code
+	if code == "" {
+		code = respCodeRiskFraud
+	}
+	s.log.Info("risk decline", "reason", dec.Reason, "code", code,
+		"stan", req.Get(11), "pan", maskPAN(req.Get(2)))
+	resp := s.buildResponse(req, code)
+	raw, err := resp.Marshal()
+	if err != nil {
+		return nil, false, err
+	}
+	s.audit(req, resp)
+	return raw, true, nil
+}
+
+// forward relays the request to an issuer, trying each configured address in
+// order until one succeeds.
 func (s *Server) forward(ctx context.Context, req *iso8583.Message, destID string) ([]byte, error) {
-	addr, ok := s.cfg.IssuerRoutes[destID]
+	addrs, ok := s.cfg.IssuerRoutes[destID]
 	if !ok {
 		return nil, fmt.Errorf("no route for receiving institution %q", destID)
 	}
+	var lastErr error
+	for _, addr := range strings.Split(addrs, ",") {
+		addr = strings.TrimSpace(addr)
+		if addr == "" {
+			continue
+		}
+		raw, err := s.dialForward(ctx, req, addr)
+		if err == nil {
+			return raw, nil
+		}
+		lastErr = err
+		s.log.Warn("issuer attempt failed", "dest", destID, "addr", addr, "err", err)
+	}
+	return nil, lastErr
+}
+
+func (s *Server) dialForward(ctx context.Context, req *iso8583.Message, addr string) ([]byte, error) {
 	var d net.Dialer
 	conn, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {
@@ -247,4 +330,12 @@ func maskPAN(pan string) string {
 		return pan
 	}
 	return pan[:6] + "******" + pan[len(pan)-4:]
+}
+
+// binOf returns the first 6 digits of a PAN, or "invalid" for diagnostics.
+func binOf(pan string) string {
+	if bin, ok := binrouting.BINOf(pan); ok {
+		return bin
+	}
+	return "invalid"
 }
