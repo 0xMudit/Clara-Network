@@ -67,3 +67,30 @@ CREATE TABLE IF NOT EXISTS default_fund (
     id      SMALLINT PRIMARY KEY,
     balance BIGINT NOT NULL DEFAULT 0
 );
+
+-- Append-only double-entry ledger (phase 4).
+CREATE TABLE IF NOT EXISTS ledger_accounts (
+    id       VARCHAR(40) PRIMARY KEY,
+    type     VARCHAR(16) NOT NULL,
+    currency VARCHAR(3)  NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ledger_entries (
+    id         BIGSERIAL PRIMARY KEY,
+    journal_id VARCHAR(64) NOT NULL,
+    account_id VARCHAR(40) NOT NULL,
+    direction  VARCHAR(8)  NOT NULL,
+    amount     BIGINT      NOT NULL,
+    currency   VARCHAR(3)  NOT NULL,
+    reference  VARCHAR(64) NOT NULL,
+    posted_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ledger_entries_account
+    ON ledger_entries (account_id, posted_at);
+
+CREATE INDEX IF NOT EXISTS idx_ledger_entries_journal
+    ON ledger_entries (journal_id);
+
+CREATE INDEX IF NOT EXISTS idx_ledger_entries_reference
+    ON ledger_entries (reference);

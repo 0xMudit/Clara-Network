@@ -80,31 +80,35 @@ The five diagrams were generated from the prompts in
 
 ## Building & running
 
-Phases 1–3 implement the **authorization flow and net settlement**:
-acquirer → switch → (risk check) → issuer authorization with BIN-based
-routing, failover, idempotent replay, in-path risk scoring, stand-in
-processing; and a clearing engine that captures clearing files, computes
-per-member net positions, enforces prefunded caps, applies the default fund,
-and emits ISO 20022 pacs.009 settlement instructions. It requires Go 1.26+
-and Docker Desktop.
+Phases 1–4 implement the **authorization flow, net settlement, and the
+scheme ledger**: acquirer → switch → (risk check) → issuer authorization with
+BIN-based routing, failover, idempotent replay, in-path risk scoring, stand-in
+processing; a clearing engine that captures clearing files, computes per-member
+net positions, enforces prefunded caps, applies the default fund, and emits ISO
+20022 pacs.009 settlement instructions; and an append-only double-entry ledger
+that posts every net position as a balanced journal and reconciles the ledger
+against the settlement agent's statement. It requires Go 1.26+ and Docker
+Desktop.
 
 ```sh
 # unit + integration tests
 go test ./...
 
 # run the full stack using Docker (postgres, redis, switch, issuer-sim,
-# acquirer-sim, clearing-sim): 6 auth requests with BIN routing and a
-# velocity rule that declines the 6th with response code 59, then a
-# settlement cycle with a member default covered by the default fund
+# acquirer-sim, clearing-sim, ledger-sim): 6 auth requests with BIN routing
+# and a velocity rule that declines the 6th with response code 59, then a
+# settlement cycle with a member default covered by the default fund, and a
+# clean ledger + reconciliation run
 docker compose -f deploy/docker-compose.yml up --build
-docker compose -f deploy/docker-compose.yml logs switch acquirer-sim clearing-sim
+docker compose -f deploy/docker-compose.yml logs switch acquirer-sim clearing-sim ledger-sim
 
 # or run locally: terminal 1 -> switch, terminal 2 -> issuer-sim,
-# terminal 3 -> acquirer-sim, terminal 4 -> clearing-sim
+# terminal 3 -> acquirer-sim, terminal 4 -> clearing-sim, terminal 5 -> ledger-sim
 go run ./cmd/switch
 go run ./cmd/issuer-sim
 go run ./cmd/acquirer-sim
 go run ./cmd/clearing-sim
+go run ./cmd/ledger-sim
 ```
 
 Key config (via env):
@@ -122,13 +126,17 @@ Key config (via env):
 - `CLARA_SCENARIO` (clearing-sim) — `default` (prefund covers) or `default`
   run with a member default; settlement pacs.009 XML is written to
   `CLARA_OUT` (default `out/clearing`).
+- `CLARA_MISMATCH` (ledger-sim) — when set, corrupts the settlement agent's
+  statement to demonstrate reconciliation classification (amount mismatch and
+  orphan-in-ledger).
 
 ## Status
 
-Research & specification library (docs 00–24), phase 1 (ISO 8583 switch),
-phase 2 (authorization flow with BIN routing, risk, failover), and phase 3
-(clearing + net settlement with prefunding, default fund, pacs.009)
-implemented. Contributions are welcome.
+Research & specification library (docs 00–26), phase 1 (ISO 8583 switch),
+phase 2 (authorization flow with BIN routing, risk, failover), phase 3
+(clearing + net settlement with prefunding, default fund, pacs.009), and
+phase 4 (append-only double-entry ledger + reconciliation against the
+settlement statement) implemented. Contributions are welcome.
 
 ## License
 
