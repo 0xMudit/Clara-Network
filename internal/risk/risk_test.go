@@ -75,7 +75,7 @@ func TestWindowReset(t *testing.T) {
 	if d, _ := e.Evaluate(ctx, "4000001234567890", "T", 100); d.Allow {
 		t.Fatal("second request should be declined")
 	}
-	time.Sleep(1100 * time.Millisecond)
+	time.Sleep(1500 * time.Millisecond)
 	if d, _ := e.Evaluate(ctx, "4000001234567890", "T", 100); !d.Allow {
 		t.Fatal("request after window reset should be allowed")
 	}

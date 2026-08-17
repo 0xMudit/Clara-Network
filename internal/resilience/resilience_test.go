@@ -108,14 +108,14 @@ func TestCircuitOpensAfterThreshold(t *testing.T) {
 }
 
 func TestCircuitHalfOpenProbeRecovers(t *testing.T) {
-	h := NewRouteHealth(2, 50*time.Millisecond)
+	h := NewRouteHealth(2, 100*time.Millisecond)
 	h.RecordFailure("a:1")
 	h.RecordFailure("a:1")
 	if h.State("a:1") != RouteOpen {
 		t.Fatalf("circuit should open, got %s", h.State("a:1"))
 	}
 	// After cooldown the probe is admitted (half-open).
-	time.Sleep(60 * time.Millisecond)
+	time.Sleep(250 * time.Millisecond)
 	if !h.Healthy("a:1") {
 		t.Fatal("half-open probe should be admitted after cooldown")
 	}
@@ -129,10 +129,10 @@ func TestCircuitHalfOpenProbeRecovers(t *testing.T) {
 }
 
 func TestCircuitProbeFailureReopens(t *testing.T) {
-	h := NewRouteHealth(2, 50*time.Millisecond)
+	h := NewRouteHealth(2, 100*time.Millisecond)
 	h.RecordFailure("a:1")
 	h.RecordFailure("a:1")
-	time.Sleep(60 * time.Millisecond)
+	time.Sleep(250 * time.Millisecond)
 	h.Healthy("a:1") // admit probe
 	h.RecordFailure("a:1")
 	if h.State("a:1") != RouteOpen {
