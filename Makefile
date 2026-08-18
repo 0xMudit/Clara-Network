@@ -1,7 +1,7 @@
 GO       ?= go
 COMPOSE  ?= docker compose
 
-.PHONY: build test vet run-switch run-issuer run-acquirer run-clearing run-ledger run-cardsvc run-card-sim run-acquiring run-disputes run-hsm run-resilience run-instant compose-up compose-down compose-logs clean
+.PHONY: build test vet docker-test run-switch run-issuer run-acquirer run-clearing run-ledger run-cardsvc run-card-sim run-acquiring run-disputes run-hsm run-resilience run-instant run-adminapi compose-up compose-down compose-logs clean
 
 build:
 	$(GO) build ./...
@@ -11,6 +11,9 @@ test:
 
 vet:
 	$(GO) vet ./...
+
+docker-test:
+	docker build --target test -t clara-network-test .
 
 run-switch:
 	$(GO) run ./cmd/switch
@@ -47,6 +50,9 @@ run-resilience:
 
 run-instant:
 	$(GO) run ./cmd/instant-sim
+
+run-adminapi:
+	$(GO) run ./cmd/adminapi
 
 compose-up:
 	$(COMPOSE) -f deploy/docker-compose.yml up --build -d

@@ -177,21 +177,21 @@ func TestExportImportRoundTrip(t *testing.T) {
 	// A shared KEK is loaded into both HSMs during a ceremony (clear load),
 	// simulating out-of-band distribution between the network and the member.
 	const sharedKEK = "808182838485868788898a8b8c8d8e8f"
-	_, err = h.LoadKeyMaterial(ctx, KeyTypeKEK, AlgAES, "acquirer-kek", sharedKEK, []string{"bob", "carol"})
+	hKEK, err := h.LoadKeyMaterial(ctx, KeyTypeKEK, AlgAES, "acquirer-kek", sharedKEK, []string{"bob", "carol"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	peer := newTestHSM(t)
-	kek, err := peer.LoadKeyMaterial(ctx, KeyTypeKEK, AlgAES, "acquirer-kek", sharedKEK, []string{"bob", "carol"})
+	peerKEK, err := peer.LoadKeyMaterial(ctx, KeyTypeKEK, AlgAES, "acquirer-kek", sharedKEK, []string{"bob", "carol"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	block, err := h.ExportKeyBlock(ctx, macKey.ID, kek.ID, []string{"alice", "carol"})
+	block, err := h.ExportKeyBlock(ctx, macKey.ID, hKEK.ID, []string{"alice", "carol"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	imported, err := peer.ImportKeyBlock(ctx, block, kek.ID, []string{"alice", "bob"})
+	imported, err := peer.ImportKeyBlock(ctx, block, peerKEK.ID, []string{"alice", "bob"})
 	if err != nil {
 		t.Fatal(err)
 	}

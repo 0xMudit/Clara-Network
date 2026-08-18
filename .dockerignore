@@ -1,0 +1,10 @@
+docs/
+*.md
+.git/
+.github/
+.vscode/
+.idea/
+out/
+deploy/schema.sql
+LICENSE
+.gitignore

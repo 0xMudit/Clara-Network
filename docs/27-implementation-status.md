@@ -22,7 +22,8 @@ clara-network/
 │   ├── disputes-sim/     # disputes + arbitration demo
 │   ├── hsm-sim/          # HSM simulation demo
 │   ├── resilience-sim/   # outage chaos drill demo
-│   └── instant-sim/      # instant-payments (RTP) demo
+│   ├── instant-sim/      # instant-payments (RTP) demo
+│   └── adminapi/         # read-only Admin REST API (long-running server)
 ├── internal/
 │   ├── iso8583/          # ISO 8583 message model, bitmap parse/build
 │   ├── framing/          # 2-byte length-prefixed TCP framing
@@ -39,6 +40,7 @@ clara-network/
 │   ├── hsm/              # in-process HSM simulation (see 27.9)
 │   ├── resilience/       # stand-in, circuit breakers, metrics, 91-burst detection
 │   ├── instant/          # ISO 20022 pacs.008/002, prefunded RTP engine
+│   ├── adminapi/         # Admin REST API: server, handlers, store, tests
 │   └── env/              # CLARA_* config helpers
 ├── deploy/docker-compose.yml   # full 14-service stack
 ├── Dockerfile                   # multi-stage build for every cmd
@@ -217,7 +219,7 @@ postgres, and redis stay up.
 
 ## 27.6 Test coverage
 
-`go test ./...` (fresh) is green. 128 tests across the modules:
+`go test ./...` (fresh) is green on Linux. 128 tests across the modules:
 
 - switchsrv (17: server, phase 2, phase 9), iso8583 (7), binrouting (4),
   risk (5), clearing (11), ledger (14), cardsvc (14), acquiring (10),
@@ -225,6 +227,10 @@ postgres, and redis stay up.
 
 `go vet ./...` is clean. Every sim is verified to exit 0 both locally and as a
 Docker image.
+
+> **Note:** Tests must be run on Linux (native or via Docker). Windows hosts
+> with AppLocker or Microsoft Defender Application Control block unsigned test
+> binaries. Use `docker build --target test` or WSL2 to run the suite.
 
 ## 27.7 What is not implemented (deliberate)
 
@@ -244,7 +250,8 @@ Docker image.
 - Everything at once: `docker compose -f deploy/docker-compose.yml up --build`
   (14 services; the one-shot sims exit 0, servers stay up), then
   `docker compose ... down`.
-- `make` targets: `build`, `test`, `vet`, `run-switch`, `run-issuer`,
+- Run tests in Docker: `docker build --target test -t clara-network-test .`
+- `make` targets: `build`, `test`, `docker-test`, `vet`, `run-switch`, `run-issuer`,
   `run-acquirer`, `run-clearing`, `run-ledger`, `run-cardsvc`, `run-card-sim`,
   `run-acquiring`, `run-disputes`, `run-hsm`, `run-resilience`,
   `run-instant`.

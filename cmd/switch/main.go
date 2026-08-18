@@ -27,6 +27,7 @@ func main() {
 
 	cfg := switchsrv.Config{
 		ListenAddr:     env.Get("CLARA_LISTEN", ":8080"),
+		HealthAddr:     env.Get("CLARA_HEALTH_ADDR", ":8084"),
 		IssuerRoutes:   map[string]string{},
 		IdempotencyTTL: 60 * time.Second,
 		Log:            logger,

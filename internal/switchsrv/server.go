@@ -6,11 +6,14 @@ package switchsrv
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/0xMudit/Clara-Network/internal/binrouting"
@@ -31,6 +34,7 @@ const (
 // Config configures the switch.
 type Config struct {
 	ListenAddr     string
+	HealthAddr     string               // HTTP health/metrics listen address; empty disables
 	IssuerRoutes   map[string]string // receiving institution ID (DE100) -> comma-separated issuer host:port list
 	BINTable       *binrouting.Table // derives DE100 from the PAN when absent
 	Risk           *risk.Engine      // in-path risk evaluation; nil disables
@@ -46,9 +50,12 @@ type Config struct {
 
 // Server is the Clara Network ISO 8583 switch.
 type Server struct {
-	cfg Config
-	ln  net.Listener
-	log *slog.Logger
+	cfg        Config
+	ln         net.Listener
+	log        *slog.Logger
+	connCount  atomic.Int64
+	authCount  atomic.Int64
+	errorCount atomic.Int64
 }
 
 // New binds the switch listener and returns a ready server.
@@ -72,13 +79,18 @@ func New(cfg Config) (*Server, error) {
 // Addr returns the bound listener address (useful with port 0 in tests).
 func (s *Server) Addr() net.Addr { return s.ln.Addr() }
 
-// ListenAndServe accepts connections until ctx is cancelled.
+// ListenAndServe accepts connections until ctx is cancelled. When HealthAddr
+// is configured it also starts an HTTP server for /health, /ready, and
+// /metrics endpoints.
 func (s *Server) ListenAndServe(ctx context.Context) error {
 	s.log.Info("switch listening", "addr", s.ln.Addr())
 	go func() {
 		<-ctx.Done()
 		s.ln.Close()
 	}()
+	if s.cfg.HealthAddr != "" {
+		go s.serveHealth(ctx)
+	}
 	for {
 		conn, err := s.ln.Accept()
 		if err != nil {
@@ -87,7 +99,29 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 			}
 			return fmt.Errorf("switch: accept: %w", err)
 		}
+		s.connCount.Add(1)
 		go s.handleConn(ctx, conn)
+	}
+}
+
+func (s *Server) serveHealth(ctx context.Context) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	})
+	mux.HandleFunc("GET /ready", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
+	})
+	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+	go func() {
+		<-ctx.Done()
+		srv.Close()
+	}()
+	s.log.Info("switch health server listening", "addr", s.cfg.HealthAddr)
+	if err := srv.ListenAndServe(); err != nil && ctx.Err() == nil {
+		s.log.Error("switch health server failed", "err", err)
 	}
 }
 
@@ -124,6 +158,7 @@ func (s *Server) process(ctx context.Context, frame []byte) ([]byte, error) {
 
 func (s *Server) handleAuth(ctx context.Context, req *iso8583.Message) ([]byte, error) {
 	start := time.Now()
+	s.authCount.Add(1)
 	destID := req.Get(100)
 	if destID == "" {
 		destID = s.routeByBIN(req)

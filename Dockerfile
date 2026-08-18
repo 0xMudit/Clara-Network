@@ -1,4 +1,14 @@
 # syntax=docker/dockerfile:1
+
+# ---------- test stage ----------
+FROM golang:1.26-alpine AS test
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN go test ./...
+
+# ---------- build stage ----------
 FROM golang:1.26-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
@@ -15,8 +25,10 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/switch ./cmd/swit
  && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/disputes-sim ./cmd/disputes-sim \
  && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/hsm-sim ./cmd/hsm-sim \
  && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/resilience-sim ./cmd/resilience-sim \
- && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/instant-sim ./cmd/instant-sim
+ && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/instant-sim ./cmd/instant-sim \
+ && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/adminapi ./cmd/adminapi
 
+# ---------- runtime stage ----------
 FROM alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata
 COPY --from=build /out/switch /usr/local/bin/switch
@@ -31,4 +43,5 @@ COPY --from=build /out/disputes-sim /usr/local/bin/disputes-sim
 COPY --from=build /out/hsm-sim /usr/local/bin/hsm-sim
 COPY --from=build /out/resilience-sim /usr/local/bin/resilience-sim
 COPY --from=build /out/instant-sim /usr/local/bin/instant-sim
+COPY --from=build /out/adminapi /usr/local/bin/adminapi
 ENTRYPOINT []

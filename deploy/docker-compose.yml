@@ -32,6 +32,7 @@ services:
     command: ["switch"]
     environment:
       CLARA_LISTEN: ":8080"
+      CLARA_HEALTH_ADDR: ":8084"
       CLARA_ISSUER_ROUTES: '{"1000001000":"issuer-sim:8082"}'
       CLARA_BIN_TABLE: '{"entries":{"400000":"1000001000"}}'
       CLARA_RISK_RULES: '{"rules":[{"name":"card-velocity","kind":"velocity-card","limit":5,"window":60,"code":"59","enabled":true}]}'
@@ -39,6 +40,7 @@ services:
       CLARA_PG_DSN: "postgres://clara:clara@postgres:5432/clara?sslmode=disable"
     ports:
       - "18080:8080"
+      - "18084:8084"
     depends_on:
       postgres:
         condition: service_healthy
@@ -176,6 +178,20 @@ services:
       dockerfile: Dockerfile
     command: ["instant-sim"]
     restart: "no"
+
+  adminapi:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["adminapi"]
+    environment:
+      CLARA_LISTEN: ":8083"
+      CLARA_PG_DSN: "postgres://clara:clara@postgres:5432/clara?sslmode=disable"
+    ports:
+      - "18083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   clearing-out:

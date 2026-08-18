@@ -114,11 +114,15 @@ transfers settled in real time, 24/7/365, against fully prefunded member
 positions (the RTP model) with a 20-second scheme SLA, verify-and-reserve
 settlement capacity checks, rejection reason codes (AC04/AC01/AG01/FF01),
 SLA timeout handling with reservation release (NOAS), and pacs.002 status
-reports. It requires Go 1.26+ and Docker Desktop.
+reports. It requires Go 1.26+ and Docker Desktop (Linux containers enabled).
 
 ```sh
-# unit + integration tests
+# unit + integration tests (run on Linux — Windows has AppLocker/Defender
+# blocks on unsigned test binaries)
 go test ./...
+
+# or run tests inside a Linux container
+docker build --target test -t clara-network-test .
 
 # run the full stack using Docker (postgres, redis, switch, issuer-sim,
 # acquirer-sim, clearing-sim, ledger-sim, cardsvc, card-sim, acquiring-sim,
@@ -156,6 +160,39 @@ go run ./cmd/hsm-sim
 go run ./cmd/resilience-sim
 go run ./cmd/instant-sim
 ```
+
+### Admin API
+
+The Admin API is a read-only REST service (`:8083`) that queries the shared PostgreSQL
+schema to power dashboards, reporting, and operational visibility.
+
+```sh
+# start the admin API (requires CLARA_PG_DSN)
+go run ./cmd/adminapi
+
+# Docker stack already includes it at http://localhost:18083
+```
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Liveness probe |
+| `GET /api/v1/dashboard` | Summary counts (transactions, clearing, merchants, disputes, cards, tokens) |
+| `GET /api/v1/transactions` | Switch transaction audit log (filterable by status, currency) |
+| `GET /api/v1/clearing/cycles` | Clearing cycle list |
+| `GET /api/v1/clearing/net-positions` | Per-member net positions |
+| `GET /api/v1/settlement/instructions` | Settlement pacs.009 instructions |
+| `GET /api/v1/settlement/prefunds` | Prefund account balances vs caps |
+| `GET /api/v1/settlement/default-fund` | Default fund balance |
+| `GET /api/v1/ledger/accounts` | Double-entry ledger accounts + computed balances |
+| `GET /api/v1/ledger/journal-entries` | Journal entry lines for each account |
+| `GET /api/v1/cards` | Issued cards (masked PAN, status, product, ATC) |
+| `GET /api/v1/bin-ranges` | BIN range assignments |
+| `GET /api/v1/tokens` | Network tokens (PAR, device, requestor) |
+| `GET /api/v1/merchants` | Boarded merchants (MCC, risk tier, reserves, limits) |
+| `GET /api/v1/funding-lines` | Merchant funding line balances |
+| `GET /api/v1/disputes` | Disputes (reason code, stage, status, evidence, fees) |
+| `GET /api/v1/disputes/overdue` | Disputes past SLA deadline |
+| `GET /api/v1/disputes/chargeback-ratio` | Chargeback ratio by merchant |
 
 Key config (via env):
 
@@ -225,8 +262,13 @@ transfers settled in real time, 24/7/365, against fully prefunded member
 positions with a 20-second SLA, verify-and-reserve settlement capacity
 checks, rejection reason codes, SLA timeout handling with reservation
 release, and pacs.002 status reports) implemented. All ten blueprint phases
-are complete — the network is feature-complete for a beta release.
-Contributions are welcome.
+are complete. The Admin API (read-only REST at `:8083`) provides full
+operational visibility across all services: transactions, clearing,
+settlement, ledger, cards, tokens, merchants, and disputes — ready for
+connecting dashboards and monitoring tools.
+
+**v0.1.0-beta** is feature-complete and ready for beta deployment with up to
+10K users. Contributions are welcome.
 
 ## License
 
