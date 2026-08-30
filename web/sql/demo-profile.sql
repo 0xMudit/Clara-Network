@@ -1,0 +1,24 @@
+-- ============================================================================
+-- Clara Network - demo users manifest
+-- ----------------------------------------------------------------------------
+-- This file is documentation ONLY. Demo users are created via
+-- `scripts/create-users.mjs` with the service-role key (managed `auth.users`
+-- cannot be inserted via SQL). Run `npm run db:users` from web/ instead.
+--
+-- Five demo roles map to Supabase `app_metadata.role`, which gates the gallery
+-- of read-only dashboards via the Next.js BFF. One shared demo password.
+--
+--   role            | email                    | app_metadata.role
+--   ----------------+--------------------------+-------------------
+--   scheme_operator | scheme-operator@clara.demo| scheme_operator
+--   issuer          | issuer@clara.demo         | issuer
+--   acquirer        | acquirer@clara.demo       | acquirer
+--   merchant        | merchant@clara.demo       | merchant
+--   viewer          | viewer@clara.demo         | viewer
+--
+--   shared demo password (demo-only, not a secret): ClaraDemo!2026
+--
+-- create-users.mjs is idempotent: it looks each email up via
+-- supabase.auth.admin.listUsers(), updates app_metadata.role if the user
+-- already exists, and otherwise creates it with email_confirm: true.
+-- ============================================================================
