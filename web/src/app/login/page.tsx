@@ -11,7 +11,7 @@ export default async function LoginPage() {
   const { data } = await supabase.auth.getUser();
   if (data.user) {
     const role = roleFromAppMetadata(data.user.app_metadata);
-    redirect(role ? HOME_BY_ROLE[role] : "/");
+    redirect(role ? HOME_BY_ROLE[role] : "/overview");
   }
   return (
     <main className="flex min-h-svh items-center justify-center p-6">

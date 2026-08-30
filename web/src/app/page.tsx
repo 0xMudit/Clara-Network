@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const supabase = await createServerClient();
   const { data } = await supabase.auth.getUser();
-  const role = roleFromAppMetadata(data.user?.app_metadata);
-  redirect(role ? HOME_BY_ROLE[role] : "/login");
+  if (!data.user) redirect("/login");
+  const role = roleFromAppMetadata(data.user.app_metadata);
+  redirect(role ? HOME_BY_ROLE[role] : "/overview");
 }
