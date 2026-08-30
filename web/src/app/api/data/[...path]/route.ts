@@ -30,11 +30,12 @@ export async function GET(
   if (error || !data.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const role = data.user.app_metadata.role as string;
   const { path } = await params;
-  const target = "/" + path.join("/");
+  const url = new URL(req.url);
+  const base = "/" + path.join("/");
   const allowed = ALLOWED_ROUTES[role] ?? [];
-  if (!allowed.includes(target)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!allowed.includes(base)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
   try {
-    const body = await claraFetch(target, data.user.id, { cache: "no-store" });
+    const body = await claraFetch(base + url.search, data.user.id, { cache: "no-store" });
     return NextResponse.json(body);
   } catch (e) {
     const status = e instanceof Error && /^clara \S+ 4\d\d/.test(e.message) ? 502 : 500;
