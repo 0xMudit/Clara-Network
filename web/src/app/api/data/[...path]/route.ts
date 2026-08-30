@@ -13,10 +13,12 @@ const ALLOWED_ROUTES: Record<string, string[]> = {
     "/dashboard", "/transactions", "/clearing/cycles", "/clearing/records",
     "/clearing/positions", "/settlement/instructions", "/settlement/prefunds",
     "/settlement/default-fund", "/ledger/accounts", "/ledger/entries",
+    "/cards", "/bin-ranges", "/tokens", "/merchants", "/disputes",
   ],
-  issuer: ["/dashboard", "/cards", "/tokens"],
-  acquirer: ["/dashboard", "/acquirer", "/merchants", "/funding", "/disputes"],
-  merchant: ["/dashboard", "/merchant", "/funding", "/disputes"],
+  issuer: ["/dashboard", "/cards", "/tokens", "/bin-ranges"],
+  acquirer: ["/dashboard", "/merchants", "/disputes"],
+  merchant: ["/dashboard", "/merchants", "/disputes"],
+  viewer: ["/dashboard"],
 };
 
 export async function GET(
