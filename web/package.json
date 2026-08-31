@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "db:seed": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/seed-docker.ps1",
-    "db:users": "node --env-file=.env.local scripts/create-users.mjs"
+    "db:users": "node --env-file=.env.local scripts/create-users.mjs",
+    "deploy:prod": "vercel --prod",
+    "deploy:preview": "vercel"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

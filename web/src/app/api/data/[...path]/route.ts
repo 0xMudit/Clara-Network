@@ -1,7 +1,6 @@
 // src/app/api/data/[...path]/route.ts
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
-import { getEnv } from "@/lib/env";
 import { claraFetch } from "@/lib/clara";
 
 export const dynamic = "force-dynamic";
