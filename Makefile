@@ -1,7 +1,7 @@
 GO       ?= go
 COMPOSE  ?= docker compose
 
-.PHONY: build test vet docker-test run-switch run-issuer run-acquirer run-clearing run-ledger run-cardsvc run-card-sim run-acquiring run-disputes run-hsm run-resilience run-instant run-adminapi compose-up compose-down compose-logs clean
+.PHONY: build test vet docker-test run-switch run-issuer run-acquirer run-clearing run-ledger run-cardsvc run-card-sim run-acquiring run-disputes run-hsm run-resilience run-instant run-adminapi compose-up compose-down compose-logs smoke clean
 
 build:
 	$(GO) build ./...
@@ -62,6 +62,11 @@ compose-down:
 
 compose-logs:
 	$(COMPOSE) -f deploy/docker-compose.yml logs -f
+
+# One-click end-to-end smoke test: boot stack, seed data, verify DB + backend
+# API + frontend build, and report PASS/FAIL. See scripts/smoke.sh.
+smoke:
+	./scripts/smoke.sh
 
 clean:
 	$(GO) clean ./...

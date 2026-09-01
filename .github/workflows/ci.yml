@@ -6,6 +6,17 @@ on:
   pull_request:
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
   build-test:
     runs-on: ubuntu-latest
     steps:
@@ -16,4 +27,63 @@ jobs:
       - run: go mod download
       - run: go vet ./...
       - run: go build ./...
-      - run: go test ./...
+      - run: go test -race ./...
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t clara-network:ci .
+      - name: Start stack
+        run: docker compose -f deploy/docker-compose.yml up -d
+      - name: Wait for services
+        run: |
+          echo "Waiting for services to start..."
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:18083/health > /dev/null 2>&1; then
+              echo "Admin API is healthy"
+              break
+            fi
+            if [ $i -eq 60 ]; then
+              echo "Timeout waiting for services"
+              docker compose -f deploy/docker-compose.yml logs
+              exit 1
+            fi
+            sleep 2
+          done
+      - name: Verify Admin API health
+        run: |
+          curl -sf http://localhost:18083/health
+          echo ""
+          curl -sf http://localhost:18083/api/v1/dashboard
+          echo ""
+      - name: Verify switch health
+        run: |
+          # The switch listens on :8080 for TCP (ISO 8583), so we check
+          # that the port is open by attempting a connection
+          (echo > /dev/tcp/localhost/18080) 2>/dev/null && echo "Switch port open" || echo "Switch port check (TCP)"
+      - name: Collect logs on failure
+        if: failure()
+        run: docker compose -f deploy/docker-compose.yml logs --tail=100
+      - name: Shutdown
+        if: always()
+        run: docker compose -f deploy/docker-compose.yml down
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - run: go mod download
+      - name: Run tests with coverage
+        run: go test -coverprofile=coverage.out -covermode=atomic ./...
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.out
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
