@@ -290,8 +290,8 @@ export const themes: ThemeConfig[] = [
   {
     name: "stripe",
     title: "Stripe",
-    primaryLight: "oklch(0.55 0.24 280)",
-    primaryDark: "oklch(0.65 0.22 280)",
+    primaryLight: "oklch(0.55 0.25 285)",
+    primaryDark: "oklch(0.65 0.26 285)",
     fontSans: "system-ui, sans-serif",
   },
   {

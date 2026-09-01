@@ -9,6 +9,15 @@ user's `app_metadata.role` (`scheme_operator | issuer | acquirer | merchant |
 viewer`). Hosting is CLI-only: Next.js on Vercel, PostgreSQL + Auth on Supabase,
 and the Go `adminapi` on Railway.
 
+It is **deployed and live now**:
+
+- Console: https://clara-network.vercel.app
+- Admin API: https://adminapi-production-efd2.up.railway.app
+- Supabase project: `clara-network`
+
+The login screen is a **persona dropdown** — pick a role and you're signed in
+instantly (no email/password, no separate Sign in button).
+
 ## 2. Prereqs
 
 - Node.js 24 (requires 20.6+ for `--env-file`, 24 is tested)
@@ -82,6 +91,9 @@ For demo-user provisioning also add `SUPABASE_SERVICE_ROLE_KEY`
 
 ## 5. Demo matrix
 
+On the login screen, pick a persona from the "I am a…" dropdown and it signs in
+straight away. (For a scripted login the credentials below are equivalent.)
+
 | role            | email                     | password        | landing page | what's visible                                                    |
 | --------------- | ------------------------- | --------------- | ------------ | ----------------------------------------------------------------- |
 | scheme_operator | scheme-operator@clara.demo| `ClaraDemo!2026`| `/ops`       | ops, transactions, clearing, settlement, ledger, cards, merchants, disputes |
@@ -94,6 +106,8 @@ The canonical identities live in `scripts/create-users.mjs` and
 `sql/demo-profile.sql` (documentation manifest) — keep all three in sync.
 
 ## 6. Deploy (CLI-only)
+
+The stack is already live — the commands below reproduce/update it.
 
 ```sh
 # Vercel (frontend), from web/:
@@ -120,7 +134,22 @@ Environment variables to set on the deployed services:
 | `CLARA_PG_DSN`                | Railway  |
 | `CLARA_LISTEN` (=`:8083`)     | Railway  |
 
-## 7. Tear-down / reset
+> **Serverless note (why the BFF uses absolute URLs):** the page data hooks
+> (`fetchAdmin`) must pass an absolute URL + cookies to the BFF because Node's
+> server-side `fetch` rejects relative URLs in the Vercel serverless runtime.
+> The app origin is resolved by `getAppUrl()` (`NEXT_PUBLIC_APP_URL` →
+> `VERCEL_PROJECT_PRODUCTION_URL` → `http://localhost:3000`).
+
+## 7. Smoke test
+
+`npm run smoke` (from the repo root: `make smoke`) is a one-click end-to-end
+check that boots the full docker-compose stack, seeds data, and verifies all
+three tiers against live services — DB schema/seed, every `adminapi` endpoint,
+and the frontend (production `next build` + runtime probes for the auth
+middleware and the BFF 401 guard). It prints a PASS/FAIL report and exits
+non-zero on failure. See [`../docs/smoke-testing.md`](../docs/smoke-testing.md).
+
+## 8. Tear-down / reset
 
 ```sh
 # Local sims / data containers (add -v to wipe local volumes):

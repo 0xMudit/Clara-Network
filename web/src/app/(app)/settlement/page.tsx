@@ -1,18 +1,23 @@
 import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { DASHBOARD_ACCESS, roleFromAppMetadata } from "@/lib/roles";
-import { fetchAdmin } from "@/lib/adminapi";
+import { tryFetchAdmin } from "@/lib/adminapi";
 import { fmtMinor } from "@/lib/money/minor";
 import { fmtTs } from "@/lib/date";
 import { StatCard } from "@/components/cards/stat-card";
+import { PageHeader, PageStack, SectionLabel } from "@/components/page-shell";
+import { DataTable, type Column } from "@/components/data-table";
+import { Badge, MonoChip } from "@/components/ui/badge";
+import { DataError } from "@/components/states";
+import { Coins } from "lucide-react";
 
-interface PrefundAccount {
+export interface PrefundAccount {
   member: string;
   balance: number;
   cap: number;
 }
 
-interface SettlementInstruction {
+export interface SettlementInstruction {
   cycleId: string;
   msgId: string;
   member: string;
@@ -23,69 +28,151 @@ interface SettlementInstruction {
   final: boolean;
 }
 
+const prefundColumns: Column<PrefundAccount>[] = [
+  {
+    key: "member",
+    header: "Member",
+    render: (a) => <span className="font-medium">{a.member}</span>,
+  },
+  {
+    key: "balance",
+    header: "Balance",
+    render: (a) => <span className="font-medium">{fmtMinor(a.balance, "EUR")}</span>,
+  },
+  {
+    key: "cap",
+    header: "Cap",
+    render: (a) => <span className="text-muted-foreground">{fmtMinor(a.cap, "EUR")}</span>,
+  },
+];
+
+const instructionColumns: Column<SettlementInstruction>[] = [
+  {
+    key: "msgId",
+    header: "MsgId",
+    render: (inst) => <MonoChip>{inst.msgId}</MonoChip>,
+  },
+  {
+    key: "member",
+    header: "Member",
+    render: (inst) => <span className="font-medium">{inst.member}</span>,
+  },
+  {
+    key: "direction",
+    header: "Dir",
+    render: (inst) => (
+      <Badge tone={inst.direction === "credit" ? "success" : "info"}>
+        {inst.direction}
+      </Badge>
+    ),
+  },
+  {
+    key: "amount",
+    header: "Amount",
+    render: (inst) => (
+      <span className="font-medium">{fmtMinor(inst.amount, inst.currency)}</span>
+    ),
+  },
+  {
+    key: "final",
+    header: "Final",
+    render: (inst) =>
+      inst.final ? (
+        <Badge tone="success">Final</Badge>
+      ) : (
+        <span className="text-muted-foreground/40">—</span>
+      ),
+  },
+  {
+    key: "instruction",
+    header: "Time",
+    render: (inst) => (
+      <span className="text-xs text-muted-foreground">
+        {fmtTs(inst.instruction)}
+      </span>
+    ),
+  },
+];
+
 export default async function SettlementPage() {
   const supabase = await createServerClient();
   const { data } = await supabase.auth.getUser();
   const role = roleFromAppMetadata(data.user?.app_metadata);
   if (!role || !DASHBOARD_ACCESS[role].includes("/settlement")) notFound();
-  const prefunds = await fetchAdmin<{ items: PrefundAccount[] }>("/settlement/prefunds");
-  const df = await fetchAdmin<{ balance: number }>("/settlement/default-fund");
-  const cycles = await fetchAdmin<{ items: string[] }>("/clearing/cycles");
-  const cycle = cycles.items[0];
+
+  const prefunds = await tryFetchAdmin<{ items: PrefundAccount[] }>(
+    "/settlement/prefunds"
+  );
+  const df = await tryFetchAdmin<{ balance: number }>(
+    "/settlement/default-fund"
+  );
+  const cycles = await tryFetchAdmin<{ items: string[] }>("/clearing/cycles");
+  const cycle = cycles.ok ? cycles.data.items[0] : undefined;
   const instructions = cycle
-    ? await fetchAdmin<{ items: SettlementInstruction[] }>(`/settlement/instructions?cycle=${encodeURIComponent(cycle)}`)
-    : { items: [] as SettlementInstruction[] };
+    ? await tryFetchAdmin<{ items: SettlementInstruction[] }>(
+        `/settlement/instructions?cycle=${encodeURIComponent(cycle)}`
+      )
+    : null;
+
   return (
-    <div className="grid gap-4">
-      <h1 className="text-2xl font-semibold">Settlement</h1>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard title="Default fund" value={fmtMinor(df.balance, "EUR")} />
+    <PageStack>
+      <PageHeader
+        title="Settlement"
+        description="Prefund balances, net positions, and settlement instructions."
+      />
+
+      <div>
+        <SectionLabel>Default fund</SectionLabel>
+        {!df.ok ? (
+          <DataError message={df.error} />
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <StatCard
+              title="Default fund balance"
+              value={fmtMinor(df.data.balance, "EUR")}
+              icon={<Coins className="size-5" />}
+              accent="success"
+            />
+          </div>
+        )}
       </div>
-      <h2 className="text-lg font-semibold">Prefund balances</h2>
-      <div className="rounded-lg border">
-        <table className="w-full text-sm">
-          <thead><tr className="border-b text-left text-muted-foreground">
-            <th className="px-3 py-2">Member</th><th className="px-3 py-2">Balance</th><th className="px-3 py-2">Cap</th>
-          </tr></thead>
-          <tbody>
-            {prefunds.items.map(a => (
-              <tr key={a.member} className="border-b last:border-0">
-                <td className="px-3 py-2">{a.member}</td>
-                <td className="px-3 py-2">{fmtMinor(a.balance, "EUR")}</td>
-                <td className="px-3 py-2">{fmtMinor(a.cap, "EUR")}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {prefunds.items.length === 0 && <p className="p-4 text-sm text-muted-foreground">No prefund accounts yet — run the seed (Task 10).</p>}
+
+      <div>
+        <SectionLabel>Prefund balances</SectionLabel>
+        {!prefunds.ok ? (
+          <DataError message={prefunds.error} />
+        ) : (
+          <DataTable
+            columns={prefundColumns}
+            rows={prefunds.data.items}
+            getKey={(a) => a.member}
+            emptyTitle="No prefund accounts yet"
+            emptyHint="Member prefund accounts will appear here."
+          />
+        )}
       </div>
-      <h2 className="text-lg font-semibold">Latest instructions</h2>
-      {cycle ? (
-        <div className="rounded-lg border">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b text-left text-muted-foreground">
-              <th className="px-3 py-2">MsgId</th><th className="px-3 py-2">Member</th>
-              <th className="px-3 py-2">Dir</th><th className="px-3 py-2">Amount</th>
-              <th className="px-3 py-2">Final</th><th className="px-3 py-2">Time</th>
-            </tr></thead>
-            <tbody>
-              {instructions.items.map(i => (
-                <tr key={i.msgId} className="border-b last:border-0">
-                  <td className="px-3 py-2 font-mono">{i.msgId}</td>
-                  <td className="px-3 py-2">{i.member}</td>
-                  <td className="px-3 py-2">{i.direction}</td>
-                  <td className="px-3 py-2">{fmtMinor(i.amount, i.currency)}</td>
-                  <td className="px-3 py-2">{i.final ? "✅" : "—"}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{fmtTs(i.instruction)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {instructions.items.length === 0 && <p className="p-4 text-sm text-muted-foreground">No settlement instructions yet — run the seed (Task 10).</p>}
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">No settlement instructions yet — run the seed (Task 10).</p>
-      )}
-    </div>
+
+      <div>
+        <SectionLabel>Latest instructions</SectionLabel>
+        {instructions ? (
+          !instructions.ok ? (
+            <DataError message={instructions.error} />
+          ) : (
+            <DataTable
+              columns={instructionColumns}
+              rows={instructions.data.items}
+              getKey={(inst) => inst.msgId}
+              emptyTitle="No settlement instructions yet"
+              emptyHint="Generated instructions for the latest cycle will appear here."
+            />
+          )
+        ) : (
+          <DataError
+            title="No settlement instructions yet"
+            message="Instructions are generated once a clearing cycle exists."
+          />
+        )}
+      </div>
+    </PageStack>
   );
 }

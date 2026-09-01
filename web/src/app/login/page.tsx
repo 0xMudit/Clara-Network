@@ -14,8 +14,10 @@ export default async function LoginPage() {
     redirect(role ? HOME_BY_ROLE[role] : "/overview");
   }
   return (
-    <main className="flex min-h-svh items-center justify-center p-6">
-      <Suspense><LoginForm /></Suspense>
+    <main className="min-h-svh">
+      <Suspense>
+        <LoginForm />
+      </Suspense>
     </main>
   );
 }

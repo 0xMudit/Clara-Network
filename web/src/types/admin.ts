@@ -3,3 +3,4 @@ export interface DashboardSummary {
   transactions: number; clearingRecords: number; merchants: number;
   disputes: number; cards: number; tokens: number;
 }
+export interface SeriesPoint { date: string; count: number }

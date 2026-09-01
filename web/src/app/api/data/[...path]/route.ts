@@ -9,15 +9,15 @@ type Res<T> = NextResponse<T | { error: string }>;
 
 const ALLOWED_ROUTES: Record<string, string[]> = {
   scheme_operator: [
-    "/dashboard", "/transactions", "/clearing/cycles", "/clearing/records",
+    "/dashboard", "/dashboard/series", "/transactions", "/clearing/cycles", "/clearing/records",
     "/clearing/positions", "/settlement/instructions", "/settlement/prefunds",
     "/settlement/default-fund", "/ledger/accounts", "/ledger/entries",
     "/cards", "/bin-ranges", "/tokens", "/merchants", "/disputes",
   ],
-  issuer: ["/dashboard", "/cards", "/tokens", "/bin-ranges"],
-  acquirer: ["/dashboard", "/merchants", "/disputes"],
-  merchant: ["/dashboard", "/merchants", "/disputes"],
-  viewer: ["/dashboard"],
+  issuer: ["/dashboard", "/dashboard/series", "/cards", "/tokens", "/bin-ranges"],
+  acquirer: ["/dashboard", "/dashboard/series", "/merchants", "/disputes"],
+  merchant: ["/dashboard", "/dashboard/series", "/merchants", "/disputes"],
+  viewer: ["/dashboard", "/dashboard/series"],
 };
 
 export async function GET(

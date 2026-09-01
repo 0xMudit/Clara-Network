@@ -249,9 +249,14 @@ go vet ./...
 
 # Build everything
 go build ./...
+
+# One-click end-to-end smoke test (boots the stack, seeds data, verifies
+# DB + adminapi + frontend against live services)
+make smoke
 ```
 
-**Current test count:** 128 tests across 12 packages, all green.
+**Current test count:** the Go unit/integration suites are all green, and
+`make smoke` verifies the live stack end to end (53 checks).
 
 ## Code Style
 
@@ -370,6 +375,9 @@ A pull request is considered complete when:
 - [ ] `deploy/schema.sql` is updated (if new tables or columns were added)
 - [ ] `docs/27-implementation-status.md` is updated (if a new phase or
       significant feature was added)
+- [ ] `make smoke` passes (if the change touches the stack, adminapi, or the
+      web console)
+- [ ] Web console changes build and lint clean (`cd web && npm run build && npm run lint`)
 - [ ] No secrets, keys, or credentials are committed
 - [ ] The PR description explains the "why" behind the change
 
@@ -391,7 +399,7 @@ A pull request is considered complete when:
 | Admin API endpoints | New query endpoints, filtering, pagination | Medium |
 | Risk engine | New rule types, ML scoring hooks | Hard |
 | Deployment | Kubernetes manifests, Terraform, Helm charts | Medium |
-| Web dashboard | UI improvements, new views | Easy–Medium |
+| Web console (`web/`) | UI/views, new BFF routes, Supabase auth/roles, smoke coverage | Easy–Medium |
 
 ## Getting Help
 

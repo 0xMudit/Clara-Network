@@ -33,6 +33,7 @@ func ListenAndServeWithMetrics(ctx context.Context, addr string, store *Store, l
 
 	mux.HandleFunc("GET /health", s.health)
 	mux.HandleFunc("GET /api/v1/dashboard", s.getDashboard)
+	mux.HandleFunc("GET /api/v1/dashboard/series", s.getDashboardSeries)
 	mux.HandleFunc("GET /api/v1/transactions", s.getTransactions)
 	mux.HandleFunc("GET /api/v1/clearing/cycles", s.getClearingCycles)
 	mux.HandleFunc("GET /api/v1/clearing/records", s.getClearingRecords)

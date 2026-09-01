@@ -1,10 +1,14 @@
 import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { DASHBOARD_ACCESS, roleFromAppMetadata } from "@/lib/roles";
-import { fetchAdmin } from "@/lib/adminapi";
+import { tryFetchAdmin } from "@/lib/adminapi";
 import { fmtMinor } from "@/lib/money/minor";
+import { PageHeader, PageStack, SectionLabel } from "@/components/page-shell";
+import { DataTable, type Column } from "@/components/data-table";
+import { MonoChip } from "@/components/ui/badge";
+import { DataError } from "@/components/states";
 
-interface ClearingRecord {
+export interface ClearingRecord {
   cycleId: string;
   stan: string;
   mti: string;
@@ -16,71 +20,146 @@ interface ClearingRecord {
   refId: string;
 }
 
-interface NetPosition {
+export interface NetPosition {
   cycleId: string;
   member: string;
   net: number;
 }
+
+const recordColumns: Column<ClearingRecord>[] = [
+  {
+    key: "stan",
+    header: "STAN",
+    render: (r) => <MonoChip>{r.stan}</MonoChip>,
+  },
+  {
+    key: "mti",
+    header: "MTI",
+    render: (r) => <MonoChip>{r.mti}</MonoChip>,
+  },
+  {
+    key: "sender",
+    header: "Sender",
+    render: (r) => <span className="font-medium">{r.sender}</span>,
+  },
+  {
+    key: "receiver",
+    header: "Receiver",
+    render: (r) => <span className="font-medium">{r.receiver}</span>,
+  },
+  {
+    key: "amount",
+    header: "Amount",
+    render: (r) => (
+      <span className="font-medium">{fmtMinor(r.amountMinor, r.currency)}</span>
+    ),
+  },
+  {
+    key: "interchange",
+    header: "Interchange",
+    render: (r) => (
+      <span className="text-muted-foreground">
+        {fmtMinor(r.interchange, r.currency)}
+      </span>
+    ),
+  },
+];
+
+const positionColumns: Column<NetPosition>[] = [
+  {
+    key: "member",
+    header: "Member",
+    render: (p) => <span className="font-medium">{p.member}</span>,
+  },
+  {
+    key: "net",
+    header: "Net",
+    render: (p) => (
+      <span className="font-medium">{fmtMinor(p.net)}</span>
+    ),
+  },
+];
 
 export default async function ClearingPage() {
   const supabase = await createServerClient();
   const { data } = await supabase.auth.getUser();
   const role = roleFromAppMetadata(data.user?.app_metadata);
   if (!role || !DASHBOARD_ACCESS[role].includes("/clearing")) notFound();
-  const cycles = await fetchAdmin<{ items: string[] }>("/clearing/cycles");
-  if (cycles.items.length === 0) {
+
+  const cycles = await tryFetchAdmin<{ items: string[] }>("/clearing/cycles");
+  if (!cycles.ok) {
     return (
-      <div className="grid gap-4">
-        <h1 className="text-2xl font-semibold">Clearing</h1>
-        <p className="text-sm text-muted-foreground">No clearing cycles yet — run the seed (Task 10).</p>
-      </div>
+      <PageStack>
+        <PageHeader title="Clearing" description="Captured transactions and interchange calculations." />
+        <DataError message={cycles.error} />
+      </PageStack>
     );
   }
-  const cycle = cycles.items[0];
-  const records = await fetchAdmin<{ items: ClearingRecord[] }>(`/clearing/records?cycle=${encodeURIComponent(cycle)}`);
-  const positions = await fetchAdmin<{ items: NetPosition[] }>(`/clearing/positions?cycle=${encodeURIComponent(cycle)}`);
+  if (cycles.data.items.length === 0) {
+    return (
+      <PageStack>
+        <PageHeader
+          title="Clearing"
+          description="Captured transactions and interchange calculations."
+        />
+        <DataError
+          title="No clearing cycles yet"
+          message="Clearing runs after a settlement window captures transactions."
+        />
+      </PageStack>
+    );
+  }
+
+  const cycle = cycles.data.items[0];
+  const records = await tryFetchAdmin<{ items: ClearingRecord[] }>(
+    `/clearing/records?cycle=${encodeURIComponent(cycle)}`
+  );
+  const positions = await tryFetchAdmin<{ items: NetPosition[] }>(
+    `/clearing/positions?cycle=${encodeURIComponent(cycle)}`
+  );
+
   return (
-    <div className="grid gap-4">
-      <h1 className="text-2xl font-semibold">Clearing</h1>
-      <p className="text-sm text-muted-foreground">Cycle {cycle}</p>
-      <div className="rounded-lg border">
-        <table className="w-full text-sm">
-          <thead><tr className="border-b text-left text-muted-foreground">
-            <th className="px-3 py-2">STAN</th><th className="px-3 py-2">MTI</th>
-            <th className="px-3 py-2">Sender</th><th className="px-3 py-2">Receiver</th>
-            <th className="px-3 py-2">Amount</th><th className="px-3 py-2">Interchange</th>
-          </tr></thead>
-          <tbody>
-            {records.items.map(r => (
-              <tr key={r.stan} className="border-b last:border-0">
-                <td className="px-3 py-2 font-mono">{r.stan}</td>
-                <td className="px-3 py-2 font-mono">{r.mti}</td>
-                <td className="px-3 py-2">{r.sender}</td>
-                <td className="px-3 py-2">{r.receiver}</td>
-                <td className="px-3 py-2">{fmtMinor(r.amountMinor, r.currency)}</td>
-                <td className="px-3 py-2">{fmtMinor(r.interchange, r.currency)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {records.items.length === 0 && <p className="p-4 text-sm text-muted-foreground">No clearing records yet — run the seed (Task 10).</p>}
+    <PageStack>
+      <PageHeader
+        title="Clearing"
+        description={
+          <>
+            Cycle{" "}
+            <span className="font-mono text-foreground">{cycle}</span> —
+            captured transactions and interchange calculations.
+          </>
+        }
+      />
+
+      <div>
+        <SectionLabel>Clearing records</SectionLabel>
+        {!records.ok ? (
+          <DataError message={records.error} />
+        ) : (
+          <DataTable
+            columns={recordColumns}
+            rows={records.data.items}
+            getKey={(r) => r.stan}
+            emptyTitle="No clearing records yet"
+            emptyHint="Captured transactions for this cycle will appear here."
+          />
+        )}
       </div>
-      <div className="rounded-lg border">
-        <table className="w-full text-sm">
-          <thead><tr className="border-b text-left text-muted-foreground">
-            <th className="px-3 py-2">Member</th><th className="px-3 py-2">Net</th>
-          </tr></thead>
-          <tbody>
-            {positions.items.map(p => (
-              <tr key={p.member} className="border-b last:border-0">
-                <td className="px-3 py-2">{p.member}</td>
-                <td className="px-3 py-2">{fmtMinor(p.net)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {positions.items.length === 0 && <p className="p-4 text-sm text-muted-foreground">No net positions yet — run the seed (Task 10).</p>}
+
+      <div>
+        <SectionLabel>Net positions</SectionLabel>
+        {!positions.ok ? (
+          <DataError message={positions.error} />
+        ) : (
+          <DataTable
+            columns={positionColumns}
+            rows={positions.data.items}
+            getKey={(p) => p.member}
+            emptyTitle="No net positions yet"
+            emptyHint="Netting results for this cycle will appear here."
+          />
+        )}
       </div>
-    </div>
+    </PageStack>
   );
 }

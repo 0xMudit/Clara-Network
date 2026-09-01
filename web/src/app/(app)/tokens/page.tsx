@@ -1,11 +1,16 @@
 import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { DASHBOARD_ACCESS, roleFromAppMetadata } from "@/lib/roles";
-import { fetchAdmin } from "@/lib/adminapi";
+import { tryFetchAdmin } from "@/lib/adminapi";
 import { fmtTs } from "@/lib/date";
+import { fmtCount } from "@/lib/format";
 import type { Page } from "@/types/admin";
+import { PageHeader, PageStack, SectionLabel } from "@/components/page-shell";
+import { DataTable, type Column } from "@/components/data-table";
+import { Badge, MonoChip } from "@/components/ui/badge";
+import { DataError } from "@/components/states";
 
-interface Token {
+export interface Token {
   token: string;
   par: string;
   status: string;
@@ -15,36 +20,80 @@ interface Token {
   createdAt: string;
 }
 
+const columns: Column<Token>[] = [
+  {
+    key: "token",
+    header: "Token",
+    render: (t) => <span className="font-mono text-xs">{t.token}</span>,
+  },
+  {
+    key: "par",
+    header: "PAR",
+    render: (t) => <MonoChip>{t.par}</MonoChip>,
+  },
+  {
+    key: "bin",
+    header: "BIN",
+    render: (t) => <MonoChip>{t.bin}</MonoChip>,
+  },
+  {
+    key: "requestor",
+    header: "Requestor",
+    render: (t) => <span className="font-medium">{t.requestor}</span>,
+  },
+  {
+    key: "status",
+    header: "Status",
+    render: (t) => (
+      <Badge tone={t.status === "active" ? "success" : "neutral"}>
+        {t.status}
+      </Badge>
+    ),
+  },
+  {
+    key: "createdAt",
+    header: "Created",
+    render: (t) => (
+      <span className="text-xs text-muted-foreground">
+        {fmtTs(t.createdAt)}
+      </span>
+    ),
+  },
+];
+
 export default async function TokensPage() {
   const supabase = await createServerClient();
   const { data } = await supabase.auth.getUser();
   const role = roleFromAppMetadata(data.user?.app_metadata);
   if (!role || !DASHBOARD_ACCESS[role].includes("/tokens")) notFound();
-  const page = await fetchAdmin<Page<Token>>("/tokens?limit=50");
+  const page = await tryFetchAdmin<Page<Token>>("/tokens?limit=50");
+
   return (
-    <div className="grid gap-4">
-      <h1 className="text-2xl font-semibold">Tokens</h1>
-      <div className="rounded-lg border">
-        <table className="w-full text-sm">
-          <thead><tr className="border-b text-left text-muted-foreground">
-            <th className="px-3 py-2">Token</th><th className="px-3 py-2">PAR</th><th className="px-3 py-2">BIN</th>
-            <th className="px-3 py-2">Requestor</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Created</th>
-          </tr></thead>
-          <tbody>
-            {page.items.map(t => (
-              <tr key={t.token} className="border-b last:border-0">
-                <td className="px-3 py-2 font-mono">{t.token}</td>
-                <td className="px-3 py-2 font-mono">{t.par}</td>
-                <td className="px-3 py-2 font-mono">{t.bin}</td>
-                <td className="px-3 py-2">{t.requestor}</td>
-                <td className="px-3 py-2">{t.status}</td>
-                <td className="px-3 py-2 text-muted-foreground">{fmtTs(t.createdAt)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {page.items.length === 0 && <p className="p-4 text-sm text-muted-foreground">No tokens yet — run the seed (Task 10).</p>}
+    <PageStack>
+      <PageHeader
+        title="Tokens"
+        tone="sky"
+        description="Digital payment tokens for contactless, mobile, and in-app transactions."
+      />
+      <div>
+        <SectionLabel>Token vault</SectionLabel>
+        {!page.ok ? (
+          <DataError message={page.error} />
+        ) : (
+          <DataTable
+            columns={columns}
+            rows={page.data.items}
+            getKey={(t) => t.token}
+            emptyTitle="No tokens yet"
+            emptyHint="Provisioned tokens will appear here."
+            footer={
+              page.data.total > 0
+                ? `Showing ${page.data.items.length} of ${fmtCount(page.data.total)} tokens`
+                : undefined
+            }
+          />
+        )}
       </div>
-    </div>
+    </PageStack>
   );
 }
