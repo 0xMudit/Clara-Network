@@ -62,9 +62,9 @@ func (m *Message) Marshal() ([]byte, error) {
 	var b strings.Builder
 	b.Grow(len(m.MTI) + 32 + len(fields)*4)
 	b.WriteString(m.MTI)
-	b.WriteString(fmt.Sprintf("%016X", primary))
+	fmt.Fprintf(&b, "%016X", primary)
 	if secondary != 0 {
-		b.WriteString(fmt.Sprintf("%016X", secondary))
+		fmt.Fprintf(&b, "%016X", secondary)
 	}
 	for _, f := range fields {
 		enc, err := encodeField(m.Fields[f], DataElements[f])

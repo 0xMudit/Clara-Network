@@ -55,7 +55,6 @@ type Server struct {
 	log        *slog.Logger
 	connCount  atomic.Int64
 	authCount  atomic.Int64
-	errorCount atomic.Int64
 }
 
 // New binds the switch listener and returns a ready server.

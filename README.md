@@ -8,9 +8,21 @@ operator, issuer, and acquirer infrastructure.
 
 The repo holds the **research and specification library** for the network under
 [`docs/`](./docs/), plus the Go implementation of the switch and settlement
-engine described in [`docs/25-clara-network-system-design.md`](./docs/25-clara-network-system-design.md).
+engine described in [`docs/25-clara-network-system-design.md`](./docs/25-clara-network-system-design.md),
+and a **live web admin console** ([`web/`](./web/)) deployed to the cloud.
 
 Start with [`docs/00-README.md`](./docs/00-README.md).
+
+### Live demo (cloud)
+
+A fully deployed, one-click sandbox is running:
+
+- **Web console** — https://clara-network.vercel.app (Next.js on Vercel)
+- **Admin API** — https://adminapi-production-efd2.up.railway.app (Go on Railway)
+- **Database + Auth** — Supabase project `clara-network`
+
+Log in by picking a persona — no typing. See
+[`web/README.md`](./web/README.md) for the full matrix and deploy runbook.
 
 ### Documentation library (all docs on `main`)
 
@@ -241,6 +253,35 @@ Key config (via env):
   configurable (`CLARA_INSTANT_SLA`, default `3s`) so the drill does not wait
   twenty seconds.
 
+### Web admin console
+
+A read-only Next.js dashboard (`web/`) sits on top of the Admin API. It uses a
+BFF (`/api/data/*`) that authenticates the user via Supabase, enforces a
+role allow-list, and proxies to the Go `adminapi`. Hosting is CLI-only:
+Next.js on **Vercel**, PostgreSQL + Auth on **Supabase**, and the Go
+`adminapi` on **Railway**.
+
+To try it, open the live console and pick a persona:
+
+```
+https://clara-network.vercel.app/login
+```
+
+The login screen is a persona dropdown — choose **Scheme Operator**, **Issuer**,
+**Acquirer**, **Merchant**, or **Viewer** and it signs you in immediately with
+that role's demo credentials (common password `ClaraDemo!2026`, provisioned by
+`npm run db:users`). See [`web/README.md`](./web/README.md) for the demo matrix,
+local setup, and the full cloud deploy runbook.
+
+### Smoke testing
+
+`make smoke` (or `scripts/smoke.sh`) is a one-click end-to-end smoke test that
+boots the full docker-compose stack, seeds data, and verifies all three tiers
+against live services — the PostgreSQL schema + seed rows, every `adminapi`
+endpoint, and the frontend (a production `next build` plus runtime probes of
+the auth middleware and the BFF auth guard). It prints a PASS/FAIL table and
+exits non-zero on any failure. See [`docs/smoke-testing.md`](./docs/smoke-testing.md).
+
 ## Status
 
 Research & specification library (docs 00–27), phase 1 (ISO 8583 switch),
@@ -267,8 +308,13 @@ operational visibility across all services: transactions, clearing,
 settlement, ledger, cards, tokens, merchants, and disputes — ready for
 connecting dashboards and monitoring tools.
 
+A **web admin console** (`web/`) is built and deployed to the cloud (Vercel +
+Supabase + Railway) with a one-click persona login, and `make smoke` verifies
+the full stack end to end.
+
 **v0.1.0-beta** is feature-complete and ready for beta deployment with up to
-10K users. Contributions are welcome.
+10K users — and currently live at https://clara-network.vercel.app.
+Contributions are welcome.
 
 ## License
 

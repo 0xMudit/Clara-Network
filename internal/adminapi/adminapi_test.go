@@ -38,6 +38,7 @@ func newTestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 
 	mux.HandleFunc("GET /health", s.health)
 	mux.HandleFunc("GET /api/v1/dashboard", s.getDashboard)
+	mux.HandleFunc("GET /api/v1/dashboard/series", s.getDashboardSeries)
 	mux.HandleFunc("GET /api/v1/transactions", s.getTransactions)
 	mux.HandleFunc("GET /api/v1/clearing/cycles", s.getClearingCycles)
 	mux.HandleFunc("GET /api/v1/clearing/records", s.getClearingRecords)
@@ -108,6 +109,27 @@ func TestDashboard(t *testing.T) {
 	body := decodeJSON[DashboardSummary](t, resp)
 	if body.Cards < 0 {
 		t.Fatal("cards count should be non-negative")
+	}
+}
+
+func TestDashboardSeries(t *testing.T) {
+	pool := testDB(t)
+	srv := newTestServer(t, pool)
+
+	resp := getJSON(t, srv.URL+"/api/v1/dashboard/series?days=30")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	body := decodeJSON[struct {
+		Items []SeriesPoint `json:"items"`
+	}](t, resp)
+	if len(body.Items) != 30 {
+		t.Fatalf("expected 30 bucket points, got %d", len(body.Items))
+	}
+	for _, p := range body.Items {
+		if p.Count < 0 {
+			t.Fatalf("count should be non-negative, got %d (%s)", p.Count, p.Date)
+		}
 	}
 }
 

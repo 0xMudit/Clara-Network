@@ -1,0 +1,82 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - unconvert
+    - gocritic
+    - gosec
+  settings:
+    errcheck:
+      # The sim/HSM services intentionally tolerate unchecked resource
+      # closes and encoder flushes (mirrors demo-service idiom). Exclude the
+      # specific calls rather than the whole linter.
+      exclude-functions:
+        - '(net.Conn).Close'
+        - '(net.Listener).Close'
+        - '(io.ReadCloser).Close'
+        - '(io.Closer).Close'
+        - '(*net/http.Server).Close'
+        - '(*encoding/json.Encoder).Encode'
+        - 'fmt.Fprintf'
+        - '(*os.File).Close'
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+      disabled-tags:
+        - style
+        - experimental
+        - opinionated
+    gosec:
+      excludes:
+        # G104: Unhandled errors — acceptable in sim/demo code and test files
+        - G104
+        # G101: Hardcoded credentials — the demo master key is intentional/documented
+        - G101
+        # G115 / G602: arithmetic / slice-boundary conversions while packing
+        # binary frames and PIN blocks — range-checked by construction.
+        - G115
+        - G602
+        # G107: HTTP url built from a variable — admin client targets a configurable host
+        - G107
+        # G112: no ReadHeaderTimeout — demo HTTP servers; not internet-facing
+        - G112
+        # G301 / G306: permissive file permissions in the clearing demo
+        - G301
+        - G306
+  exclusions:
+    rules:
+      # gocritic findings that reflect deliberate repo design, suppressed by
+      # checker text:
+      # hugeParam / rangeValCopy — structs passed by value by design.
+      # exitAfterDefer — cmd/* uses os.Exit after defer'ing shutdown helpers.
+      # stringXbytes — explicit []byte(bin) kept for reader clarity.
+      - text: "hugeParam|rangeValCopy|exitAfterDefer|stringXbytes"
+        linters:
+          - gocritic
+      # Weak cryptographic primitives (DES/3DES) in the HSM simulation mirror
+      # real card HSMs, so the blocklisted import and weak-crypto use are
+      # intentional. Everything else gosec flags is still enforced.
+      - path: internal/hsm/
+        linters:
+          - gosec
+      # Allow unhandled errors in main.go and sim entry points
+      - path: cmd/
+        linters:
+          - errcheck
+      # defer tx.Rollback(ctx) after a successful Commit is the canonical pgx
+      # cleanup pattern; its error is intentionally ignored.
+      - path: internal/ledger/postgres.go
+        linters:
+          - errcheck
+      # Allow unused parameters in test files
+      - path: _test\.go
+        linters:
+          - unused

@@ -16,6 +16,18 @@ func (s *server) getDashboard(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, summary)
 }
 
+// ── Dashboard time series ────────────────────────────────────────────────────
+
+func (s *server) getDashboardSeries(w http.ResponseWriter, r *http.Request) {
+	days := queryInt(r, "days", 14)
+	series, err := s.store.TransactionSeries(r.Context(), days)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": series})
+}
+
 // ── Transactions ─────────────────────────────────────────────────────────────
 
 func (s *server) getTransactions(w http.ResponseWriter, r *http.Request) {
