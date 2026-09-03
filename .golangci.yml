@@ -18,11 +18,12 @@ linters:
       # closes and encoder flushes (mirrors demo-service idiom). Exclude the
       # specific calls rather than the whole linter.
       exclude-functions:
-        - '(_*net.Conn).Close'
-        - '(*net.Conn).Close'
+        - '(net.Conn).Close'
+        - '(net.Listener).Close'
+        - '(io.ReadCloser).Close'
+        - '(io.Closer).Close'
         - '(*net/http.Server).Close'
-        - '(*net.Listener).Close'
-        - '(*encoding/json.Encoder).Encode'
+        - '(pgx.Tx).Rollback'
         - '(sql.Tx).Rollback'
         - 'fmt.Fprintf'
         - '(*os.File).Close'
@@ -53,12 +54,6 @@ linters:
         - G306
   exclusions:
     rules:
-      # Unchecked resource closes/rollbacks (conn.Close, ln.Close, Body.Close,
-      # tx.Rollback) are tolerated demo-sim idiom; other errcheck findings
-      # (e.g. json encode failures) are still enforced.
-      - text: "Error return value of .*(Close|Rollback) is not checked"
-        linters:
-          - errcheck
       # gocritic findings that reflect deliberate repo design, suppressed by
       # checker text:
       # hugeParam / rangeValCopy — structs passed by value by design.
