@@ -1,51 +1,43 @@
-run:
-  timeout: 5m
-  modules-download-mode: readonly
-  # golangci-lint v1 is built with Go 1.24 and refuses a module targeting
-  # go 1.26.0. Pin the analysis language version to what the tool can parse;
-  # the Go toolchain (go 1.26) still builds/tests the code. Migrate to
-  # golangci-lint v2 when convenient to drop this. #9
-  go: "1.24"
+version: "2"
 
 linters:
+  default: none
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
     - unused
-    - gofmt
     - misspell
     - unconvert
     - gocritic
     - gosec
+  settings:
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+      disabled-tags:
+        - style
+        - experimental
+        - opinionated
+    gosec:
+      excludes:
+        # G104: Unhandled errors — acceptable in sim/demo code and test files
+        - G104
+        # G101: Hardcoded credentials — the demo master key is intentional/documented
+        - G101
+  exclusions:
+    rules:
+      # Allow unhandled errors in main.go and sim entry points
+      - path: cmd/
+        linters:
+          - errcheck
+      # Allow unused parameters in test files
+      - path: _test\.go
+        linters:
+          - unused
 
-linters-settings:
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - performance
-    disabled-tags:
-      - style
-      - experimental
-      - opinionated
-  gosec:
-    excludes:
-      # G104: Unhandled errors — acceptable in sim/demo code and test files
-      - G104
-      # G101: Hardcoded credentials — the demo master key is intentional/documented
-      - G101
-
-issues:
-  exclude-rules:
-    # Allow unhandled errors in main.go and sim entry points
-    - path: cmd/
-      linters:
-        - errcheck
-    # Allow unused parameters in test files
-    - path: _test\.go
-      linters:
-        - unused
-  max-issues-per-linter: 50
-  max-same-issues: 5
+formatters:
+  enable:
+    - gofmt
