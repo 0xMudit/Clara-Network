@@ -29,9 +29,8 @@ linters-settings:
     excludes:
       # G104: Unhandled errors — acceptable in sim/demo code and test files
       - G104
-    # The demo master key is intentional and documented
-    config: |
-      G101: hardcodes
+      # G101: Hardcoded credentials — the demo master key is intentional/documented
+      - G101
 
 issues:
   exclude-rules:
