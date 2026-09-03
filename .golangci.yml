@@ -24,8 +24,6 @@ linters:
         - '(io.Closer).Close'
         - '(*net/http.Server).Close'
         - '(*encoding/json.Encoder).Encode'
-        - '(pgx.Tx).Rollback((context.Context))'
-        - '(sql.Tx).Rollback((context.Context))'
         - 'fmt.Fprintf'
         - '(*os.File).Close'
     gocritic:
@@ -71,6 +69,11 @@ linters:
           - gosec
       # Allow unhandled errors in main.go and sim entry points
       - path: cmd/
+        linters:
+          - errcheck
+      # defer tx.Rollback(ctx) after a successful Commit is the canonical pgx
+      # cleanup pattern; its error is intentionally ignored.
+      - path: internal/ledger/postgres.go
         linters:
           - errcheck
       # Allow unused parameters in test files
