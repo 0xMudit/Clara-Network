@@ -83,7 +83,7 @@ jobs:
       - name: Run tests with coverage
         run: go test -coverprofile=coverage.out -covermode=atomic ./...
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           files: coverage.out
           fail_ci_if_error: false
