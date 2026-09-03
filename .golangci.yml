@@ -53,6 +53,12 @@ linters:
         - G306
   exclusions:
     rules:
+      # Unchecked resource closes/rollbacks (conn.Close, ln.Close, Body.Close,
+      # tx.Rollback) are tolerated demo-sim idiom; other errcheck findings
+      # (e.g. json encode failures) are still enforced.
+      - text: "Error return value of .*(Close|Rollback) is not checked"
+        linters:
+          - errcheck
       # gocritic findings that reflect deliberate repo design, suppressed by
       # checker text:
       # hugeParam / rangeValCopy — structs passed by value by design.
