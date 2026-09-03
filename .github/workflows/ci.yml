@@ -13,7 +13,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
-      - uses: golangci/golangci-lint-action@v7
+      - uses: golangci/golangci-lint-action@v9
         with:
           # v2.9.0+ is built with Go 1.26; v1 (latest resolves to v1.64.x) is
           # built with Go 1.24 and cannot analyze a module targeting go 1.26.
