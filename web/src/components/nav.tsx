@@ -2,7 +2,7 @@
 
 import { HOME_BY_ROLE, DASHBOARD_ACCESS, ROLE_LABEL, type Role } from "@/lib/roles";
 import { LogoutButton } from "@/components/logout-button";
-import { ThemeSwitcher } from "@/components/theme-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -65,7 +65,7 @@ export default function Nav({ role }: { role: Role }) {
                 >
                   {TITLES[p] ?? p}
                   {isActive && (
-                    <span className="absolute inset-x-1 -bottom-[13px] h-0.5 rounded-full bg-primary" />
+                    <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary" />
                   )}
                 </Link>
               );
@@ -79,7 +79,7 @@ export default function Nav({ role }: { role: Role }) {
           <span className="hidden rounded-full bg-muted/80 px-2.5 py-1 text-[11px] font-medium text-muted-foreground ring-1 ring-border/50 sm:inline-block">
             {ROLE_LABEL[role]}
           </span>
-          <ThemeSwitcher />
+          <ThemeToggle />
           <LogoutButton />
 
           {/* Mobile hamburger */}

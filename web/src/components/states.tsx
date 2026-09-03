@@ -1,4 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Full-area loading skeleton, shown by route-level loading.tsx. */
@@ -36,10 +37,42 @@ export function DataError({
 }) {
   return (
     <Card className={cn("overflow-hidden", className)}>
-      <CardContent className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+      <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+        <div className="flex size-9 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+          <AlertCircle className="size-4" />
+        </div>
         <p className="text-sm font-medium text-foreground">{title}</p>
         {message && (
           <p className="max-w-md text-xs text-muted-foreground">{message}</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Inline empty-state card with a subtle icon for empty data sets. */
+export function EmptyState({
+  title,
+  hint,
+  icon,
+  className,
+}: {
+  title: string;
+  hint?: string;
+  icon?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card className={cn("overflow-hidden", className)}>
+      <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+        {icon && (
+          <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+            {icon}
+          </div>
+        )}
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        {hint && (
+          <p className="max-w-md text-xs text-muted-foreground">{hint}</p>
         )}
       </CardContent>
     </Card>

@@ -1,6 +1,5 @@
 "use client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkline } from "@/components/sparkline";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -12,8 +11,6 @@ interface StatCardProps {
   trend?: "up" | "down" | "neutral";
   trendValue?: string;
   accent?: "default" | "success" | "warning" | "danger" | "info";
-  /** Optional array of numeric data points for the sparkline chart */
-  sparkData?: number[];
 }
 
 const ACCENT_MAP = {
@@ -52,7 +49,6 @@ export function StatCard({
   trend,
   trendValue,
   accent = "default",
-  sparkData,
 }: StatCardProps) {
   const a = ACCENT_MAP[accent];
 
@@ -60,12 +56,13 @@ export function StatCard({
     <Card
       className={cn(
         "group relative overflow-hidden transition-all duration-300",
-        "hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5",
-        "ring-1 ring-border/60"
+        "hover:shadow-lg hover:shadow-primary/8 hover:-translate-y-0.5",
+        "ring-1 ring-border/60",
+        "hover:ring-primary/20"
       )}
     >
-      {/* Subtle gradient glow on hover */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      {/* Gradient glow on hover */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-accent/[0.02] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
       <CardContent className="relative">
         <div className="flex items-start justify-between gap-3">
@@ -100,13 +97,13 @@ export function StatCard({
             )}
 
             {hint && (
-              <p className="mt-1 text-xs text-muted-foreground/70 line-clamp-1">
+              <p className="mt-1 text-xs text-muted-foreground/70 line-clamp-2">
                 {hint}
               </p>
             )}
           </div>
 
-          {/* Icon or Sparkline */}
+          {/* Icon */}
           {icon && (
             <div
               className={cn(
@@ -119,25 +116,7 @@ export function StatCard({
               {icon}
             </div>
           )}
-          {!icon && sparkData && sparkData.length >= 2 && (
-            <div className="flex size-10 shrink-0 items-center justify-center">
-              <Sparkline data={sparkData} width={40} height={40} accent={accent} fill={false} />
-            </div>
-          )}
         </div>
-
-        {/* Sparkline below the value row */}
-        {sparkData && sparkData.length >= 2 && (
-          <div className="mt-3 -mx-1">
-            <Sparkline
-              data={sparkData}
-              width={280}
-              height={36}
-              accent={accent}
-              fill
-            />
-          </div>
-        )}
       </CardContent>
     </Card>
   );

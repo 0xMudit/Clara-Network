@@ -19,12 +19,12 @@ const TONE_BG: Record<Tone, string> = {
 };
 
 const TONE_ORB: Record<Tone, string> = {
-  default: "bg-primary/5",
-  violet: "bg-violet-500/5",
-  sky: "bg-sky-500/5",
-  emerald: "bg-emerald-500/5",
-  amber: "bg-amber-500/5",
-  rose: "bg-rose-500/5",
+  default: "bg-primary/[0.08]",
+  violet: "bg-violet-500/[0.08]",
+  sky: "bg-sky-500/[0.08]",
+  emerald: "bg-emerald-500/[0.08]",
+  amber: "bg-amber-500/[0.08]",
+  rose: "bg-rose-500/[0.08]",
 };
 
 /**

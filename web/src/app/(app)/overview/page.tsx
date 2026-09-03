@@ -1,6 +1,5 @@
 import { tryFetchAdmin } from "@/lib/adminapi";
 import { fmtCount } from "@/lib/format";
-import { sparkFromValue } from "@/lib/spark-data";
 import { StatCard } from "@/components/cards/stat-card";
 import { TransactionChart, type SeriesPointDatum } from "@/components/transaction-chart";
 import type { DashboardSummary, SeriesPoint } from "@/types/admin";
@@ -41,7 +40,6 @@ export default async function OverviewPage() {
               hint="Authorizations processed via the switch"
               icon={<CreditCard className="size-5" />}
               accent="info"
-              sparkData={sparkFromValue(dashboard.data.transactions)}
             />
             <StatCard
               title="Clearing records"
@@ -49,7 +47,6 @@ export default async function OverviewPage() {
               hint="Captured this settlement window"
               icon={<FileText className="size-5" />}
               accent="default"
-              sparkData={sparkFromValue(dashboard.data.clearingRecords)}
             />
             <StatCard
               title="Merchants"
@@ -57,7 +54,6 @@ export default async function OverviewPage() {
               hint="Active merchant accounts"
               icon={<Store className="size-5" />}
               accent="success"
-              sparkData={sparkFromValue(dashboard.data.merchants)}
             />
             <StatCard
               title="Disputes"
@@ -67,7 +63,6 @@ export default async function OverviewPage() {
               accent={
                 dashboard.data.disputes > 0 ? "warning" : "default"
               }
-              sparkData={sparkFromValue(dashboard.data.disputes, 10, 0.25)}
             />
             <StatCard
               title="Cards"
@@ -75,7 +70,6 @@ export default async function OverviewPage() {
               hint="Issued cards in the network"
               icon={<Layers className="size-5" />}
               accent="default"
-              sparkData={sparkFromValue(dashboard.data.cards)}
             />
             <StatCard
               title="Tokens"
@@ -83,7 +77,6 @@ export default async function OverviewPage() {
               hint="Digital tokens for contactless & mobile"
               icon={<Coins className="size-5" />}
               accent="default"
-              sparkData={sparkFromValue(dashboard.data.tokens)}
             />
           </div>
 

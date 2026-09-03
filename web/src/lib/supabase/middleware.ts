@@ -16,7 +16,9 @@ export async function updateSession(request: NextRequest) {
     },
   });
   const { data } = await supabase.auth.getUser();
-  if (request.nextUrl.pathname.startsWith("/login")) return response;
+  // Public landing page (/) and /login are reachable without a session.
+  if (request.nextUrl.pathname === "/" || request.nextUrl.pathname.startsWith("/login"))
+    return response;
   if (!data.user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

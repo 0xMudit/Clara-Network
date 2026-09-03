@@ -1,10 +1,11 @@
 // src/lib/money/minor.test.ts
-import assert from "node:assert/strict";
-import { test } from "node:test";
+import { describe, it, expect } from "vitest";
 import { fmtMinor } from "./minor";
 
-test("fmtMinor formats minor units", () => {
-  assert.equal(fmtMinor(123456), "1,234.56 EUR");
-  assert.equal(fmtMinor(0), "0.00 EUR");
-  assert.equal(fmtMinor(-5000), "-50.00 EUR");
+describe("fmtMinor", () => {
+  it("formats minor units with locale grouping", () => {
+    expect(fmtMinor(123456)).toBe("1,234.56 EUR");
+    expect(fmtMinor(0)).toBe("0.00 EUR");
+    expect(fmtMinor(-5000)).toBe("-50.00 EUR");
+  });
 });

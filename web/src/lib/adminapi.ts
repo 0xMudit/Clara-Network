@@ -2,6 +2,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { getAppUrl } from "./env";
+import { getMockForPath } from "./mock-data";
 
 export class AdminError extends Error {
   constructor(
@@ -38,11 +39,29 @@ export async function tryFetchAdmin<T>(path: string): Promise<AdminResult<T>> {
     const data = await fetchAdmin<T>(path);
     return { ok: true, data };
   } catch (e) {
+    const status = e instanceof AdminError ? e.status : undefined;
+
+    // A real 401/403 means the session expired or the role lacks access —
+    // never mask that with mock data, or we'd hide a genuine security issue.
+    if (status === 401 || status === 403) {
+      return { ok: false, error: "You don't have access to this data." };
+    }
+
+    // Network errors and upstream (5xx) failures: fall back to realistic
+    // mock data so the demo stays alive when the Go admin API is unreachable.
+    // The mock layer only knows a handful of endpoints; anything else falls
+    // through to the generic error.
+    const mock = getMockForPath(path);
+    if (mock !== null) {
+      console.warn(
+        `[adminapi] using mock data for "${path}" (${status ?? "network error"})`
+      );
+      return { ok: true, data: mock as T };
+    }
+
     const msg =
       e instanceof AdminError
-        ? e.status === 401 || e.status === 403
-          ? "You don't have access to this data."
-          : "The Admin API is temporarily unavailable. Try again shortly."
+        ? "The Admin API is temporarily unavailable. Try again shortly."
         : "Something went wrong loading this data.";
     return { ok: false, error: msg };
   }
