@@ -1,6 +1,11 @@
 run:
   timeout: 5m
   modules-download-mode: readonly
+  # golangci-lint v1 is built with Go 1.24 and refuses a module targeting
+  # go 1.26.0. Pin the analysis language version to what the tool can parse;
+  # the Go toolchain (go 1.26) still builds/tests the code. Migrate to
+  # golangci-lint v2 when convenient to drop this. #9
+  go: "1.24"
 
 linters:
   enable:
