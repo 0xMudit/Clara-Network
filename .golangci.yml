@@ -34,17 +34,6 @@ linters:
         - style
         - experimental
         - opinionated
-      disabled-checkers:
-        # Value-type structs are deliberately passed by value throughout the
-        # sims (immutable value semantics); pointer-izing them to shave a few
-        # copies would be a behavioral change, not a lint fix.
-        - hugeParam
-        - rangeValCopy
-        # cmd/* entrypoints use os.Exit after defer'ing shutdown helpers; this
-        # is intentional process orchestration, not a leak.
-        - exitAfterDefer
-        # []byte(bin) is kept explicit for reader clarity in cardsvc.
-        - stringXbytes
     gosec:
       excludes:
         # G104: Unhandled errors — acceptable in sim/demo code and test files
@@ -64,6 +53,14 @@ linters:
         - G306
   exclusions:
     rules:
+      # gocritic findings that reflect deliberate repo design, suppressed by
+      # checker text:
+      # hugeParam / rangeValCopy — structs passed by value by design.
+      # exitAfterDefer — cmd/* uses os.Exit after defer'ing shutdown helpers.
+      # stringXbytes — explicit []byte(bin) kept for reader clarity.
+      - text: "hugeParam|rangeValCopy|exitAfterDefer|stringXbytes"
+        linters:
+          - gocritic
       # Weak cryptographic primitives (DES/3DES) in the HSM simulation mirror
       # real card HSMs, so the blocklisted import and weak-crypto use are
       # intentional. Everything else gosec flags is still enforced.
