@@ -23,8 +23,9 @@ linters:
         - '(io.ReadCloser).Close'
         - '(io.Closer).Close'
         - '(*net/http.Server).Close'
-        - '(pgx.Tx).Rollback'
-        - '(sql.Tx).Rollback'
+        - '(*encoding/json.Encoder).Encode'
+        - '(pgx.Tx).Rollback((context.Context))'
+        - '(sql.Tx).Rollback((context.Context))'
         - 'fmt.Fprintf'
         - '(*os.File).Close'
     gocritic:
